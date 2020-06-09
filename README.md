@@ -1,6 +1,5 @@
 # hyperleup
-A project that creates a Tableau Hyper file from an Apache Spark DataFrame and 
-publishes to a Tableau Server.
+Create and manipulate Tableau Hyper files from Apache Spark DataFrames and Spark SQL.
 
 ## Example
 The following code snippet executes a SQL statement as an Apache Spark DataFrame,
