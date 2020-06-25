@@ -1,39 +1,13 @@
-# MacOS
-.DS_Store
+/.idea/
+*.iml
 
-# Distributions
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
+#local spark context data from unit tests
+spark-warehouse/
 
-# PyInstaller
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Sphinx documentation
-docs/_build/
-
-# virtualenv
-venv/
-ENV/
-
-# Pycharm
-.idea
-
+#Build dirctory for maven/sbt
+target/
+project/project/
+project/target/
+*.DS_Store
+/target/
+/project/build.properties
