@@ -55,6 +55,13 @@ class HyperFile extends SparkSessionWrapper {
     this
   }
 
+  /**
+    * Create a Tableau Hyper File from Spark DataFrame
+    */
+  private def createHyperFile(): String = {
+    Creator(this).create()
+  }
+
   def name: String = _name
 
   def sql: String = _sql
@@ -71,51 +78,26 @@ class HyperFile extends SparkSessionWrapper {
 object HyperFile {
 
   def apply(filename: String, sql: String): HyperFile = {
-    new HyperFile()
+    val hyperFile = new HyperFile()
       .setFilename(filename)
       .setSql(sql)
       .setDF(sql)
       .setSchema("Extract")
       .setTable("Extract")
-      .setPath("/tmp")
-  }
-
-  def apply(filename: String,
-            sql: String,
-            schema: String,
-            table: String,
-            path: String): HyperFile = {
-    new HyperFile()
-      .setFilename(filename)
-      .setSql(sql)
-      .setDF(sql)
-      .setSchema(schema)
-      .setTable(table)
-      .setPath(path)
+    val path = hyperFile.createHyperFile()
+    hyperFile.setPath(path)
   }
 
 
   def apply(filename: String, df: DataFrame): HyperFile = {
-    new HyperFile()
+    val hyperFile = new HyperFile()
       .setFilename(filename)
       .setSql("")
       .setDF(df)
       .setSchema("Extract")
       .setTable("Extract")
-      .setPath("/tmp")
+    val path = hyperFile.createHyperFile()
+    hyperFile.setPath(path)
   }
 
-  def apply(filename: String,
-            df: DataFrame,
-            schema: String,
-            table: String,
-            path: String): HyperFile = {
-    new HyperFile()
-      .setFilename(filename)
-      .setSql("")
-      .setDF(df)
-      .setSchema(schema)
-      .setTable(table)
-      .setPath(path)
-  }
 }
