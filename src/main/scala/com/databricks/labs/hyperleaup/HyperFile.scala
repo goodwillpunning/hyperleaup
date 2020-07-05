@@ -66,13 +66,26 @@ class HyperFile extends SparkSessionWrapper {
 
   def sql: String = _sql
 
-  private[hyperleaup] def getDf: DataFrame = _df
+  def getDf: DataFrame = _df
 
   def schema: String = _schema
 
   def table: String = _table
 
   def path: String = _path
+
+  /**
+    * Publish local Tableau Hyper File to Tableau Server
+    */
+  def publish(tableauServer: String,
+              tableauVersion: String,
+              username: String,
+              password: String,
+              siteContentUrl: String,
+              projectName: String,
+              dataSourceName: String): LUID = {
+    Publisher(this).publish(tableauServer, tableauVersion, username, password, siteContentUrl, projectName, dataSourceName)
+  }
 }
 
 object HyperFile {
