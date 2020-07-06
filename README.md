@@ -7,7 +7,7 @@ Sometimes this means waiting around most of the day for the data extract to comp
 What a waste of time! In addition, the Tableau Backgrounder (the Tableau Server job scheduler)
 becomes a single point of failure as more refresh jobs are scheduled and long running jobs exhaust the server’s resources.
 
-![Data Extract Current Workflow](images/data-extracts-current.png =250x)
+![Data Extract Current Workflow](images/data-extracts-current.png)
 
 ## How hyperleaup helps
 Rather than pulling data from the source over an ODBC connection, `Hyperleaup` can write data directly to a Hyper file
