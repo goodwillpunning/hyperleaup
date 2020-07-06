@@ -9,8 +9,12 @@ import org.apache.spark.sql.types._
 import com.tableau.hyperapi.Nullability.{NOT_NULLABLE, NULLABLE}
 import java.nio.file.{Files, Path, Paths, StandardCopyOption}
 
+import org.apache.log4j.Logger
+
 
 class Creator(hyperFile: HyperFile) extends SparkSessionWrapper {
+
+  private val logger: Logger = Logger.getLogger(this.getClass)
 
   private val _name: String = hyperFile.name
   private val _schema: String = hyperFile.schema
@@ -32,7 +36,17 @@ class Creator(hyperFile: HyperFile) extends SparkSessionWrapper {
       case BooleanType => SqlType.bool()
       case DateType => SqlType.date()
       case TimestampType => SqlType.timestamp()
-      case _ => throw new IllegalArgumentException(s"Could not parse data type '${column.dataType}' in column : $name")
+      case _ =>
+        // check if the data type is a Decimal(precision,scale)
+        if (column.dataType.toString.toLowerCase.startsWith("decimal")) {
+          val decimalType = column.dataType.asInstanceOf[DecimalType]
+          // Tableau SqlType.numeric has a maximum precision of 18
+          val precision = if (decimalType.precision > 18) 18 else decimalType.precision
+          val scale = decimalType.scale
+          SqlType.numeric(precision, scale)
+        } else {
+          throw new IllegalArgumentException(s"Could not parse data type '${column.dataType}' in column : $name")
+        }
     }
     val nullability = if (column.nullable) NULLABLE else NOT_NULLABLE
     new TableDefinition.Column(name, dataType, nullability)
@@ -149,12 +163,12 @@ class Creator(hyperFile: HyperFile) extends SparkSessionWrapper {
 
       // Check if Databricks Filesytem is present
       val csvPath = if (isDbfsEnabled) {
-        println("DBFS _IS_ enabled.")
+        logger.info("DBFS _IS_ enabled.")
         // A Hyper database cannot be opened using cloud storage,
         // so it must be created on the driver node
         writeCsvToDbfs(_df)
       } else {
-        println("DBFS is _NOT_ enabled.")
+        logger.info("DBFS is _NOT_ enabled.")
         writeCsvToLocalFilesystem(_df)
       }
 
@@ -172,7 +186,7 @@ class Creator(hyperFile: HyperFile) extends SparkSessionWrapper {
       // The most efficient method for adding data to a table is with the COPY command
       val copyCommand = s"COPY ${tableDefinition.getTableName} from '$csvPath' with (format csv, NULL 'NULL', delimiter ',', header)"
       val count = connection.get.executeCommand(copyCommand).getAsLong
-      println(s"Copied $count rows.")
+      logger.info(s"Copied $count rows.")
 
       hyperDatabase.toString
 
