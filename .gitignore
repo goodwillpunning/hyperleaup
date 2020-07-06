@@ -11,3 +11,7 @@ project/target/
 *.DS_Store
 /target/
 /project/build.properties
+
+# Hyper database
+hyperd.log
+/lib/hyper/

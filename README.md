@@ -7,6 +7,8 @@ Sometimes this means waiting around most of the day for the data extract to comp
 What a waste of time! In addition, the Tableau Backgrounder (the Tableau Server job scheduler)
 becomes a single point of failure as more refresh jobs are scheduled and long running jobs exhaust the server’s resources.
 
+![Data Extract Current Workflow](images/data-extracts-current.png =250x)
+
 ## How hyperleaup helps
 Rather than pulling data from the source over an ODBC connection, `Hyperleaup` can write data directly to a Hyper file
 and publish final Hyper files to a Tableau Server. Best of all, you can take advantage of all the benefits of 
@@ -40,8 +42,14 @@ hf.publish(tableauServer, tableauVersion,
            datasourceName)
 ```
 
+## Building the project
+The project can be build by using an SBT terminal and executing `package`.
+```sbtshell
+sbt clean package
+```
+
 ## How to run tests
 The tests can be run by using an SBT terminal and executing `tests`.
 ```sbtshell
-sbt tests
+sbt test
 ```
