@@ -40,7 +40,7 @@ class HyperFileTestSuite extends org.scalatest.FunSuite with SparkSessionFixture
     assert(hyperFile.sql == sql)
   }
 
-  test("A Hyper File should be create from a DataFrame containing Decimal data types") {
+  test("A Hyper File should be created from a DataFrame containing Decimal data types") {
 
     val testDF = Seq(
       (1L, 1, "John", "Doe", 1250, 150.00),
