@@ -20,6 +20,9 @@ Apache Spark + Tableau Hyper API:
 `hyperleaup` allows you to create repeatable data extracts that can be scheduled to run on a repeated frequency
 or even incorporate it as a final step in an ETL pipeline, e.g. refresh data extract with latest CDC.
 
+## Getting Started
+A list of usage examples is available in the `demo` folder of this repo as a [Databricks Notebook Archive (DBC)](demo/Hyperleaup-Demo.dbc).
+
 ## Example usage
 The following code snippet creates a Tableau Hyper file from a Spark SQL statement and publishes it as a datasource to a Tableau Server.
 
@@ -42,4 +45,36 @@ hf.publish(tableau_server_url,
            site_name,
            project_name,
            datasource_name)
+```
+
+## Legal Information
+This software is provided **as-is** and is not officially supported by Databricks through customer technical support channels.
+Support, questions, and feature requests can be submitted through the Issues page of this repo.
+Please understand that issues with the use of this code will not be answered or investigated by Databricks Support.  
+
+## Core Contribution team
+* Lead Developer: [Will Girten](https://www.linkedin.com/in/willgirten/), RSA, Databricks
+
+## Project Support
+Please note that all projects in the /databrickslabs github account are provided for your exploration only, 
+and are not formally supported by Databricks with Service Level Agreements (SLAs).  
+They are provided AS-IS and we do not make any guarantees of any kind.  
+Please do not submit a support ticket relating to any issues arising from the use of these projects.
+
+Any issues discovered through the use of this project should be filed as GitHub Issues on the Repo.  
+They will be reviewed as time permits, but there are no formal SLAs for support.
+
+
+## Building the Project
+To build the project: <br>
+```
+python setup.py bdist_egg
+```
+
+## Running Pytests
+To run tests on the project: <br>
+```
+cd tests
+python test_hyper_file.py
+python test_creator.py
 ```
