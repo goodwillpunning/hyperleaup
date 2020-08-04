@@ -1,17 +1,33 @@
-/.idea/
-*.iml
+# Byte-compiled Files
+__pycache__/
+*.py[cod]
+*$py.class
 
-#local spark context data from unit tests
-spark-warehouse/
+# Distribution/Packaging
+.Python
+venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-#Build dirctory for maven/sbt
-target/
-project/project/
-project/target/
+# Tests
+.pytest_cache/
+tests/spark-warehouse/
+tests/hyperd.log
+
+# MacOS Stuff
 *.DS_Store
-/target/
-/project/build.properties
 
-# Hyper database
-hyperd.log
-/lib/hyper/
+# PyCharm
+.idea/
