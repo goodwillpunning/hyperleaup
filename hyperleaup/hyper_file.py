@@ -2,7 +2,6 @@ from pyspark.sql import DataFrame
 from tableauhyperapi import HyperProcess, Telemetry, Connection
 
 from hyperleaup.creator import Creator
-from pathlib import Path
 from hyperleaup.publisher import Publisher
 from tableauhyperapi import TableName
 from hyperleaup.spark_fixture import get_spark_session
@@ -16,7 +15,6 @@ class HyperFile:
 
     def __init__(self, name: str,
                  sql: str = None, df: DataFrame = None,
-                 output_dir: str = "/tmp",
                  is_dbfs_enabled: bool = False):
         self.name = name
         if sql is not None and df is None:
@@ -26,10 +24,8 @@ class HyperFile:
             self.df = df
         else:
             raise Exception("Hyper file must have SQL as an argument.")
-        self.output_dir = output_dir
         self.is_dbfs_enabled = is_dbfs_enabled
-        hyper_file_path = '{0}/{1}.hyper'.format(self.output_dir, self.name)
-        self.path = Creator(self.df, Path(hyper_file_path), self.is_dbfs_enabled).create()
+        self.path = Creator(self.df, self.name, self.is_dbfs_enabled).create()
         self.luid = None
 
     def print_rows(self):

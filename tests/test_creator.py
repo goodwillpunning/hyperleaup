@@ -1,8 +1,10 @@
 from pathlib import Path
 
+from pyspark.sql.functions import current_date, current_timestamp
 from tableauhyperapi import SqlType, NOT_NULLABLE, NULLABLE, TableDefinition, TableName
 from tableauhyperapi import Name
-from hyperleaup.creator import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator
+from hyperleaup.creator import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator, \
+    write_csv_to_local_file_system
 from pyspark.sql.types import *
 
 from hyperleaup.spark_fixture import get_spark_session
@@ -56,7 +58,7 @@ class TestCreator(object):
             (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
             (1002, "John", "Doe", "1988-05-03", 33.0, False),
             (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
-            (None, None, None, None, None, None) # Test Nulls
+            (None, None, None, None, None, None)  # Test Nulls
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         table_def = get_table_def(df, "Extract", "Extract")
@@ -113,6 +115,19 @@ class TestCreator(object):
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/output.hyper")
         assert(num_rows == 3)
 
+    def test_write_csv_to_local_file_system(self):
+        data = [
+            (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
+            (1002, "John", "Doe", "1988-05-03", 33.0, False),
+            (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
+            (2202, "James", "Towdry", "1980-05-03", 45.0, False),
+            (2235, "Susan", "Sanders", "1980-05-03", 43.0, True)
+
+        ]
+        df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
+        csv_file = write_csv_to_local_file_system(df, "employees")
+        assert(csv_file.startswith("/tmp/hyperleaup/employees/"))
+
     def test_create(self):
         data = [
             (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
@@ -123,10 +138,15 @@ class TestCreator(object):
 
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
-        creator = Creator(df, Path("/tmp/output.hyper"), False)
+
+        # Ensure that a Hyper file can be created with date and timestamp columns
+        df.withColumn("hire_date", current_date())
+        df.withColumn("last_updated", current_timestamp())
+
+        creator = Creator(df, 'employees', False)
         hyper_file_path = creator.create()
-        assert(hyper_file_path == "/tmp/output.hyper")
-        tables = TestUtils.get_tables("Extract", "/tmp/output.hyper")
+        assert(hyper_file_path == "/tmp/hyperleaup/employees/employees.hyper")
+        tables = TestUtils.get_tables("Extract", "/tmp/hyperleaup/employees/employees.hyper")
         assert(len(tables) == 1)
-        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/output.hyper")
+        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees/employees.hyper")
         assert(num_rows == 5)
