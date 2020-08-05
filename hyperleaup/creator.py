@@ -1,3 +1,5 @@
+import os
+from shutil import copyfile
 from typing import List, Any
 
 from pyspark.sql import DataFrame
@@ -66,38 +68,102 @@ def insert_data_into_hyper_file(data: List[Any], path: Path, table_def: TableDef
                 inserter.execute()
 
 
+def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefinition) -> str:
+    """Helper function that copies data from a CSV file to a .hyper file."""
+    hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+        with Connection(endpoint=hp.endpoint,
+                        database=Path(hyper_database_path),
+                        create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
+
+            connection.catalog.create_schema(schema=table_def.table_name.schema_name)
+            connection.catalog.create_table(table_definition=table_def)
+
+            # The most efficient method for adding data to a table is with the COPY command
+            copy_command = f"COPY {table_def.table_name} from '{csv_path}' with (format csv, NULL 'NULL', delimiter ',', header)"
+            count = connection.execute_command(copy_command)
+            print(f"Copied {count} rows.")
+
+            return hyper_database_path
+
+
+def write_csv_to_local_file_system(df: DataFrame, name: str) -> str:
+    """Writes a Spark DataFrame to a single CSV file on the local filesystem."""
+    tmp_dir = f"/tmp/hyperleaup/{name}/"
+
+    # write the DataFrame to local disk as a single CSV file
+    df.coalesce(1).write \
+        .option("delimiter", ",") \
+        .option("header", "true") \
+        .option("inferSchema", "true")\
+        .mode("overwrite").csv(tmp_dir)
+
+    # Spark DataFrameWriter will write metadata alongside the CSV,
+    # ignore metedata and return only the CSV filename
+    for root_dir, dirs, files in os.walk(tmp_dir):
+        for file in files:
+            if file.endswith(".csv"):
+                return f"{tmp_dir}/{file}"
+
+
+def write_csv_to_dbfs(df: DataFrame, name: str) -> str:
+    """Moves a CSV written to a Databricks Filesystem to a temp directory on the driver node."""
+    tmp_dir = f"/tmp/hyperleaup/{name}/"
+
+    # write the DataFrame to DBFS as a single CSV file
+    df.coalesce(1).write \
+        .option("delimiter", ",") \
+        .option("header", "true") \
+        .option("inferSchema", "true")\
+        .mode("overwrite").csv(tmp_dir)
+
+    # Spark DataFrameWriter will write metadata alongside the CSV,
+    # ignore metedata and return only the CSV filename
+    dbfs_tmp_dir = "/dbfs" + tmp_dir
+    csv_file = None
+    for root_dir, dirs, files in os.walk(dbfs_tmp_dir):
+        for file in files:
+            if file.endswith(".csv"):
+                csv_file = file
+
+    if csv_file is None:
+        raise FileNotFoundError(f"CSV file '{tmp_dir}' not found on DBFS.")
+
+    # Copy CSV from DBFS location to temp dir on driver node
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+    src_path = dbfs_tmp_dir + csv_file
+    dest_path = tmp_dir + csv_file
+    copyfile(src_path, dest_path)
+
+    return dest_path
+
+
 class Creator:
 
-    def __init__(self, df: DataFrame, path: Path, is_dbfs_enabled: bool = False):
+    def __init__(self, df: DataFrame, name: str, is_dbfs_enabled: bool = False):
         self.df = df
-        self.path = path
+        self.name = name
         self.is_dbfs_enabled = is_dbfs_enabled
-
-    def write_dataframe_to_csv(self):
-        path = "/tmp/output.hyper"
-        self.df.coalesce(1).write.mode("overwrite").csv(path)
-        return path
 
     def create(self) -> str:
         """Creates a Tableau Hyper File given a SQL statement"""
-        # Execute the user SQL, reading into a Spark DataFrame
-        print("Creating Spark DataFrame...")
-        row_count = self.df.count()
-        print(f"There are {row_count} records in the extract.")
-
-        # Collect the DataFrame rows into the Driver
-        print("Collecting rows back to Driver...")
-        data = get_rows(self.df)
-        print("Done.")
+        # Write Spark DataFrame to CSV so that a file COPY can be done
+        if not self.is_dbfs_enabled:
+            print("Writing Spark DataFrame to local disk...")
+            csv_path = write_csv_to_local_file_system(self.df, self.name)
+        else:
+            print("Writing Spark DataFrame to DBFS...")
+            csv_path = write_csv_to_dbfs(self.df, self.name)
 
         # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
-        print("Converting Spark DataFrame schema to Tableau Table Definition...")
+        print("Generating Tableau Table Definition...")
         table_def = get_table_def(self.df, "Extract", "Extract")
         print("Done.")
 
-        # Insert data into a Tableau .hyper file
-        print("Inserting data into Hyper File...")
-        insert_data_into_hyper_file(data, Path(self.path), table_def)
+        # COPY data into a Tableau .hyper file
+        print("Copying data into Hyper File...")
+        database_path = copy_data_into_hyper_file(csv_path, self.name, table_def)
         print("All done!")
 
-        return str(self.path)
+        return database_path
