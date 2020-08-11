@@ -95,7 +95,6 @@ def write_csv_to_local_file_system(df: DataFrame, name: str) -> str:
     df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
-        .option("inferSchema", "true")\
         .mode("overwrite").csv(tmp_dir)
 
     # Spark DataFrameWriter will write metadata alongside the CSV,
@@ -114,7 +113,6 @@ def write_csv_to_dbfs(df: DataFrame, name: str) -> str:
     df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
-        .option("inferSchema", "true")\
         .mode("overwrite").csv(tmp_dir)
 
     # Spark DataFrameWriter will write metadata alongside the CSV,

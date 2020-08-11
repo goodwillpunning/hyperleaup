@@ -133,8 +133,8 @@ class TestCreator(object):
             (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
             (1002, "John", "Doe", "1988-05-03", 33.0, False),
             (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
-            (2202, "James", "Towdry", "1980-05-03", 45.0, False),
-            (2235, "Susan", "Sanders", "1980-05-03", 43.0, True)
+            (2202, None, None, "1980-05-03", 45.0, False),  # Add a few nulls
+            (2235, "", "", "1980-05-03", 43.0, True)
 
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
