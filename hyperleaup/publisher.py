@@ -33,41 +33,39 @@ class Publisher:
         hyper_file_size = os.path.getsize(self.hyper_file_path)
         print(f"The Hyper File size is (in bytes): {hyper_file_size}")
 
-        try:
-            username_pw_auth = TSC.TableauAuth(self.username, self.password)
-            server = TSC.Server(self.tableau_server_url)
-            with server.auth.sign_in(username_pw_auth):
+        username_pw_auth = TSC.TableauAuth(username=self.username, password=self.password, site_id=self.site_id)
+        server = TSC.Server(self.tableau_server_url)
+        with server.auth.sign_in(username_pw_auth):
 
-                # Search for project on the Tableau server
-                projects, pagination = server.projects.get()
-                for project in projects:
-                    if project.name == self.project_name:
-                        print(f'Found project on Tableau server. Project ID: {project.id}')
-                        self.project_id = project.id
-                if self.project_id is None:
-                    raise ValueError(f'Invalid project name. Could not find project named "{self.project_name}" '
-                                     f'on the Tableau server.')
+            # Search for project on the Tableau server
+            projects, pagination = server.projects.get()
+            for project in projects:
+                if project.name == self.project_name:
+                    print(f'Found project on Tableau server. Project ID: {project.id}')
+                    self.project_id = project.id
 
-                # Next, check if the datasource already exists and needs to be overwritten
-                create_mode = 'CreateNew'
-                datasources, pagination = server.datasources.get()
-                for datasource in datasources:
-                    if datasource.name == self.datasource_name:
-                        print(f'Overwriting existing datasource named "{self.datasource_name}".')
-                        create_mode = 'Overwrite'
-                        break
+            # If project was not found on the Tableau Server, raise an error
+            if self.project_id is None:
+                raise ValueError(f'Invalid project name. Could not find project named "{self.project_name}" '
+                                 f'on the Tableau server.')
 
-                # Finally, publish the Hyper File to the Tableau server
-                print(f'Publishing Hyper File located at: "{self.hyper_file_path}"')
-                datasource_item = TSC.DatasourceItem(project_id=self.project_id, name=self.project_name)
-                datasource_item = server.datasources.publish(datasource_item=datasource_item,
-                                                             file_path=self.hyper_file_path,
-                                                             mode=create_mode)
-                self.datasource_luid = datasource_item.id
-                print(f'Published datasource to Tableau server. Datasource LUID : {self.datasource_luid}')
+            # Next, check if the datasource already exists and needs to be overwritten
+            create_mode = 'CreateNew'
+            datasources, pagination = server.datasources.get()
+            for datasource in datasources:
+                if datasource.name == self.datasource_name:
+                    print(f'Overwriting existing datasource named "{self.datasource_name}".')
+                    create_mode = 'Overwrite'
+                    break
 
-        except Exception as e:
-            print(e)
+            # Finally, publish the Hyper File to the Tableau server
+            print(f'Publishing Hyper File located at: "{self.hyper_file_path}"')
+            datasource_item = TSC.DatasourceItem(project_id=self.project_id, name=self.project_name)
+            datasource_item = server.datasources.publish(datasource_item=datasource_item,
+                                                         file_path=self.hyper_file_path,
+                                                         mode=create_mode)
+            self.datasource_luid = datasource_item.id
+            print(f'Published datasource to Tableau server. Datasource LUID : {self.datasource_luid}')
 
         print("Done.")
 

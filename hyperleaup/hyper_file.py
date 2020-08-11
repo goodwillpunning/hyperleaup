@@ -1,10 +1,35 @@
 from pyspark.sql import DataFrame
+from pyspark.sql.types import IntegerType, StringType
 from tableauhyperapi import HyperProcess, Telemetry, Connection
 
 from hyperleaup.creator import Creator
 from hyperleaup.publisher import Publisher
 from tableauhyperapi import TableName
 from hyperleaup.spark_fixture import get_spark_session
+
+
+def clean_dataframe(df: DataFrame) -> DataFrame:
+    """Replaces null or NaN values with '' and 0s"""
+    schema = df.schema
+    integer_cols = []
+    string_cols = []
+    for field in schema:
+        if field.dataType == IntegerType():
+            integer_cols.append(field.name)
+        elif field.dataType == StringType():
+            string_cols.append(field.name)
+        else:
+            string_cols.append(field.name)
+    # Replace NaN and Null values with 0 and '' respectively
+    if (len(integer_cols) > 0) and (len(string_cols) > 0):
+        df = df.na.fill(0, integer_cols).na.fill('', string_cols)
+    # Replace NaN values with 0
+    elif len(integer_cols) > 0:
+        df = df.na.fill(0, integer_cols)
+    # Replace Null values with empty string
+    elif len(string_cols) > 0:
+        df = df.na.fill('', string_cols)
+    return df
 
 
 def get_spark_dataframe(sql):
@@ -19,9 +44,9 @@ class HyperFile:
         self.name = name
         if sql is not None and df is None:
             self.sql = sql
-            self.df = get_spark_dataframe(sql)
+            self.df = clean_dataframe(get_spark_dataframe(sql))
         elif sql is None and df is not None:
-            self.df = df
+            self.df = clean_dataframe(df)
         else:
             raise Exception("Hyper file must have SQL as an argument.")
         self.is_dbfs_enabled = is_dbfs_enabled
