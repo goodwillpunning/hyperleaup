@@ -1,12 +1,48 @@
 import os
+import logging
 from shutil import copyfile
 from typing import List, Any
-
+from hyperleaup.creation_mode import CreationMode
 from pyspark.sql import DataFrame
 from pyspark.sql.types import *
 from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, TableName, HyperProcess, Telemetry, \
-    CreateMode, Inserter, Connection
+    Inserter, Connection, CreateMode
 from pathlib import Path
+
+
+def clean_dataframe(df: DataFrame) -> DataFrame:
+    """Replaces null or NaN values with '' and 0s"""
+    schema = df.schema
+    integer_cols = []
+    long_cols = []
+    double_cols = []
+    float_cols = []
+    string_cols = []
+    for field in schema:
+        if field.dataType == IntegerType():
+            integer_cols.append(field.name)
+        elif field.dataType == LongType():
+            long_cols.append(field.name)
+        elif field.dataType == DoubleType():
+            double_cols.append(field.name)
+        elif field.dataType == FloatType():
+            float_cols.append(field.name)
+        elif field.dataType == StringType():
+            string_cols.append(field.name)
+
+    # Replace null and NaN values with 0
+    if len(integer_cols) > 0:
+        df = df.na.fill(0, integer_cols)
+    elif len(long_cols) > 0:
+        df = df.na.fill(0, long_cols)
+    elif len(double_cols) > 0:
+        df = df.na.fill(0.0, double_cols)
+    elif len(float_cols) > 0:
+        df = df.na.fill(0.0, float_cols)
+    elif len(string_cols) > 0:
+        df = df.na.fill('', string_cols)
+
+    return df
 
 
 def get_rows(df: DataFrame) -> List[Any]:
@@ -55,17 +91,24 @@ def get_table_def(df: DataFrame, schema_name: str, table_name: str) -> TableDefi
     )
 
 
-def insert_data_into_hyper_file(data: List[Any], path: Path, table_def: TableDefinition):
+def insert_data_into_hyper_file(data: List[Any], name: str, table_def: TableDefinition):
     """Helper function that inserts data into a .hyper file."""
+    # first, create a temp directory on the driver node
+    tmp_dir = f"/tmp/hyperleaup/{name}/"
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+    hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
     with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
         with Connection(endpoint=hp.endpoint,
-                        database=path,
+                        database=hyper_database_path,
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
             connection.catalog.create_schema(schema=table_def.table_name.schema_name)
             connection.catalog.create_table(table_definition=table_def)
             with Inserter(connection, table_def) as inserter:
                 inserter.add_rows(rows=data)
                 inserter.execute()
+
+    return hyper_database_path
 
 
 def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefinition) -> str:
@@ -80,11 +123,11 @@ def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefiniti
             connection.catalog.create_table(table_definition=table_def)
 
             # The most efficient method for adding data to a table is with the COPY command
-            copy_command = f"COPY {table_def.table_name} from '{csv_path}' with (format csv, NULL 'NULL', delimiter ',', header)"
+            copy_command = f"COPY \"Extract\".\"Extract\" from '{csv_path}' with (format csv, NULL 'null', delimiter ',', header)"
             count = connection.execute_command(copy_command)
-            print(f"Copied {count} rows.")
+            logging.info(f"Copied {count} rows.")
 
-            return hyper_database_path
+    return hyper_database_path
 
 
 def write_csv_to_local_file_system(df: DataFrame, name: str) -> str:
@@ -92,7 +135,8 @@ def write_csv_to_local_file_system(df: DataFrame, name: str) -> str:
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
     # write the DataFrame to local disk as a single CSV file
-    df.coalesce(1).write \
+    cleaned_df = clean_dataframe(df)
+    cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
         .mode("overwrite").csv(tmp_dir)
@@ -110,7 +154,8 @@ def write_csv_to_dbfs(df: DataFrame, name: str) -> str:
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
     # write the DataFrame to DBFS as a single CSV file
-    df.coalesce(1).write \
+    cleaned_df = clean_dataframe(df)
+    cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
         .mode("overwrite").csv(tmp_dir)
@@ -139,29 +184,55 @@ def write_csv_to_dbfs(df: DataFrame, name: str) -> str:
 
 class Creator:
 
-    def __init__(self, df: DataFrame, name: str, is_dbfs_enabled: bool = False):
+    def __init__(self, df: DataFrame, name: str,
+                 is_dbfs_enabled: bool = False,
+                 creation_mode: str = CreationMode.COPY.value,
+                 null_values_replacement = None):
+        if null_values_replacement is None:
+            null_values_replacement = {}
         self.df = df
         self.name = name
         self.is_dbfs_enabled = is_dbfs_enabled
+        self.creation_mode = creation_mode
+        self.null_values_replacement = null_values_replacement
 
     def create(self) -> str:
         """Creates a Tableau Hyper File given a SQL statement"""
-        # Write Spark DataFrame to CSV so that a file COPY can be done
-        if not self.is_dbfs_enabled:
-            print("Writing Spark DataFrame to local disk...")
-            csv_path = write_csv_to_local_file_system(self.df, self.name)
+        if self.creation_mode.upper() == CreationMode.COPY.value:
+
+            # Write Spark DataFrame to CSV so that a file COPY can be done
+            if not self.is_dbfs_enabled:
+                logging.info("Writing Spark DataFrame to local disk...")
+                csv_path = write_csv_to_local_file_system(self.df, self.name)
+            else:
+                logging.info("Writing Spark DataFrame to DBFS...")
+                csv_path = write_csv_to_dbfs(self.df, self.name)
+
+            # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
+            logging.info("Generating Tableau Table Definition...")
+            table_def = get_table_def(self.df, "Extract", "Extract")
+
+            # COPY data into a Tableau .hyper file
+            logging.info("Copying data into Hyper File...")
+            database_path = copy_data_into_hyper_file(csv_path, self.name, table_def)
+
+        elif self.creation_mode.upper() == CreationMode.INSERT.value:
+
+            # Collect the DataFrame rows into the Driver
+            logging.info("Collecting rows back to Driver...")
+            data = get_rows(self.df)
+
+            # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
+            logging.info("Converting Spark DataFrame schema to Tableau Table Definition...")
+            table_def = get_table_def(self.df, "Extract", "Extract")
+
+            # Insert data into a Tableau .hyper file
+            logging.info("Inserting data into Hyper File...")
+            database_path = insert_data_into_hyper_file(data, self.name, table_def)
+
         else:
-            print("Writing Spark DataFrame to DBFS...")
-            csv_path = write_csv_to_dbfs(self.df, self.name)
+            raise ValueError(f'Invalid "creation_mode" specified: {self.creation_mode}')
 
-        # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
-        print("Generating Tableau Table Definition...")
-        table_def = get_table_def(self.df, "Extract", "Extract")
-        print("Done.")
-
-        # COPY data into a Tableau .hyper file
-        print("Copying data into Hyper File...")
-        database_path = copy_data_into_hyper_file(csv_path, self.name, table_def)
-        print("All done!")
+        logging.info("Hyper File successfully created!")
 
         return database_path

@@ -35,7 +35,7 @@ select *
   from transaction_history
  where action_date > '2015-01-01'
 """
-hf = HyperFile("transaction_history", query)
+hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True)
 
 
 # Step 2: Publish Hyper File to a Tableau Server
@@ -45,6 +45,19 @@ hf.publish(tableau_server_url,
            site_name,
            project_name,
            datasource_name)
+
+# Step 3: Append new data
+new_data = """
+select *
+  from transaction_history
+ where action_date > last_publish_date
+"""
+hf.append(tableau_server_url,
+          username,
+          password,
+          site_name,
+          project_name,
+          datasource_name)
 ```
 
 ## Legal Information
@@ -54,6 +67,7 @@ Please understand that issues with the use of this code will not be answered or 
 
 ## Core Contribution team
 * Lead Developer: [Will Girten](https://www.linkedin.com/in/willgirten/), RSA, Databricks
+* Puru Shrestha, Sr. BI Developer
 
 ## Project Support
 Please note that all projects in the /databrickslabs github account are provided for your exploration only, 
