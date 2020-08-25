@@ -1,32 +1,14 @@
-from pathlib import Path
-
-from pyspark.sql.functions import current_date, current_timestamp
+from pyspark.sql.functions import current_date, current_timestamp, to_date
 from tableauhyperapi import SqlType, NOT_NULLABLE, NULLABLE, TableDefinition, TableName
 from tableauhyperapi import Name
+
 from hyperleaup.creator import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator, \
     write_csv_to_local_file_system
 from pyspark.sql.types import *
 
 from hyperleaup.spark_fixture import get_spark_session
-from tableauhyperapi import HyperProcess, Connection, Telemetry, SchemaName
 
-
-class TestUtils:
-
-    @staticmethod
-    def get_tables(schema: str, hyper_file_path: str):
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
-            with Connection(endpoint=hp.endpoint, database=hyper_file_path) as connection:
-                catalog = connection.catalog
-                # Query the Catalog API for all tables under the given schema
-                return catalog.get_table_names(SchemaName(schema))
-
-    @staticmethod
-    def get_row_count(schema: str, table: str, hyper_file_path: str):
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
-            with Connection(endpoint=hp.endpoint, database=hyper_file_path) as connection:
-                # Query the Hyper File for the number of rows in the table
-                return connection.execute_scalar_query(f"SELECT COUNT(*) FROM {TableName(schema, table)}")
+from tests.test_utils import TestUtils
 
 
 class TestCreator(object):
@@ -100,7 +82,7 @@ class TestCreator(object):
             (1002, "John", "Doe"),
             (2201, "Elonzo", "Smith")
         ]
-        path = Path("/tmp/output.hyper")
+        name = "output"
         table_def = TableDefinition(
             table_name=TableName("Extract", "Extract"),
             columns=[
@@ -109,10 +91,11 @@ class TestCreator(object):
                 TableDefinition.Column(name=Name("last_name"), type=SqlType.text(), nullability=NULLABLE)
             ]
         )
-        insert_data_into_hyper_file(data, path, table_def)
-        tables = TestUtils.get_tables("Extract", "/tmp/output.hyper")
+        path = insert_data_into_hyper_file(data, name, table_def)
+        print(f'Database Path : {path}')
+        tables = TestUtils.get_tables("Extract", "/tmp/hyperleaup/output/output.hyper")
         assert(len(tables) == 1)
-        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/output.hyper")
+        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/output/output.hyper")
         assert(num_rows == 3)
 
     def test_write_csv_to_local_file_system(self):
@@ -150,3 +133,21 @@ class TestCreator(object):
         assert(len(tables) == 1)
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees/employees.hyper")
         assert(num_rows == 5)
+
+    def test_creation_mode(self):
+        data = [
+            (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
+            (1002, "John", "Doe", "1988-05-03", 33.0, False),
+            (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
+            (2202, None, None, "1980-05-03", 45.0, False),  # Add a few nulls
+            (2235, "", "", "1980-05-03", 43.0, True)
+
+        ]
+        df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
+
+        # creation_mode using a str
+        creator = Creator(df=df, name='employees', is_dbfs_enabled=False, creation_mode="Insert")
+        hyper_file_path = creator.create()
+        assert (hyper_file_path == "/tmp/hyperleaup/employees/employees.hyper")
+        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees/employees.hyper")
+        assert (num_rows == 5)
