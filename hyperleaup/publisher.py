@@ -55,10 +55,15 @@ class Publisher:
 
         username_pw_auth = TSC.TableauAuth(username=self.username, password=self.password, site_id=self.site_id)
         server = TSC.Server(self.tableau_server_url)
+        server.use_server_version()
         with server.auth.sign_in(username_pw_auth):
 
-            # Search for project on the Tableau server
-            projects, pagination = server.projects.get()
+            # Search for project on the Tableau server, filtering by project name
+            req_options = TSC.RequestOptions()
+            req_options.filter.add(TSC.Filter(TSC.RequestOptions.Field.Name,
+                                              TSC.RequestOptions.Operator.Equals,
+                                              self.project_name))
+            projects, pagination = server.projects.get(req_options=req_options)
             for project in projects:
                 if project.name == self.project_name:
                     logging.info(f'Found project on Tableau server. Project ID: {project.id}')
@@ -72,7 +77,16 @@ class Publisher:
             # Next, check if the datasource already exists and needs to be overwritten
             create_mode = TSC.Server.PublishMode.CreateNew
             if creation_mode.upper() == 'CREATENEW':
-                datasources, pagination = server.datasources.get()
+
+                # Search for the datasource under project name
+                req_options = TSC.RequestOptions()
+                req_options.filter.add(TSC.Filter(TSC.RequestOptions.Field.ProjectName,
+                                                  TSC.RequestOptions.Operator.Equals,
+                                                  self.project_name))
+                req_options.filter.add(TSC.Filter(TSC.RequestOptions.Field.Name,
+                                                  TSC.RequestOptions.Operator.Equals,
+                                                  self.datasource_name))
+                datasources, pagination = server.datasources.get(req_options=req_options)
                 for datasource in datasources:
                     # the datasource already exists, overwrite
                     if datasource.name == self.datasource_name:
