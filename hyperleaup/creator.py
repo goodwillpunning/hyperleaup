@@ -56,6 +56,8 @@ def convert_struct_field(column: StructField) -> TableDefinition.Column:
         sql_type = SqlType.int()
     elif column.dataType == LongType():
         sql_type = SqlType.big_int()
+    elif column.dataType == ShortType():
+        sql_type = SqlType.small_int()
     elif column.dataType == DoubleType():
         sql_type = SqlType.double()
     elif column.dataType == FloatType():
