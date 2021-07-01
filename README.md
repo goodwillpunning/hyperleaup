@@ -52,6 +52,8 @@ select *
   from transaction_history
  where action_date > last_publish_date
 """
+hf = HyperFile(name="transaction_history", sql=new_data, is_dbfs_enabled=True)
+
 hf.append(tableau_server_url,
           username,
           password,
