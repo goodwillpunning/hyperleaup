@@ -2,4 +2,4 @@ tableauserverclient
 pyspark==3.0.0
 requests==2.24.0
 tableauhyperapi==0.0.11074
-urllib3==1.25.9
+urllib3==1.26.5
