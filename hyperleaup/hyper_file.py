@@ -21,7 +21,7 @@ class HyperFile:
     def __init__(self, name: str,
                  sql: str = None, df: DataFrame = None,
                  is_dbfs_enabled: bool = False,
-                 creation_mode: str = CreationMode.COPY.value,
+                 creation_mode: str = CreationMode.PARQUET.value,
                  null_values_replacement: dict = None):
         self.name = name
         # Create a DataFrame from Spark SQL

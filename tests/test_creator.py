@@ -3,7 +3,7 @@ from tableauhyperapi import SqlType, NOT_NULLABLE, NULLABLE, TableDefinition, Ta
 from tableauhyperapi import Name
 
 from hyperleaup.creator import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator, \
-    write_csv_to_local_file_system
+    write_csv_to_local_file_system, write_parquet_to_local_file_system
 from pyspark.sql.types import *
 
 from hyperleaup.spark_fixture import get_spark_session
@@ -116,6 +116,19 @@ class TestCreator(object):
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         csv_file = write_csv_to_local_file_system(df, "employees")
         assert(csv_file.startswith("/tmp/hyperleaup/employees/"))
+
+    def test_write_parquet_to_local_file_system(self):
+        data = [
+            (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
+            (1002, "John", "Doe", "1988-05-03", 33.0, False),
+            (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
+            (2202, "James", "Towdry", "1980-05-03", 45.0, False),
+            (2235, "Susan", "Sanders", "1980-05-03", 43.0, True)
+
+        ]
+        df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
+        parquet_file = write_parquet_to_local_file_system(df, "employees")
+        assert(parquet_file.startswith("/tmp/hyperleaup/employees/"))
 
     def test_create(self):
         data = [
