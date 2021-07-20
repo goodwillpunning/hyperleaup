@@ -52,12 +52,7 @@ select *
   from transaction_history
  where action_date > last_publish_date
 """
-hf.append(tableau_server_url,
-          username,
-          password,
-          site_name,
-          project_name,
-          datasource_name)
+hf.append(sql=new_data)
 ```
 
 ## Legal Information
