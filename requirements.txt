@@ -1,5 +1,5 @@
-tableauserverclient
-pyspark==3.0.0
-requests==2.24.0
-tableauhyperapi==0.0.11074
-urllib3==1.26.5
+tableauserverclient==0.16.0
+pyspark==3.1.2
+requests==2.26.0
+tableauhyperapi==0.0.13129
+urllib3==1.26.6
