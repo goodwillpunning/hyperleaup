@@ -41,7 +41,7 @@ class Publisher:
         self.datasource_luid = None
         self.hyper_file_path = hyper_file_path
 
-    def publish(self, creation_mode='CreateNew'):
+    def publish(self, creation_mode = 'Overwrite'):
         """Publishes a Hyper File to a Tableau Server"""
 
         # Ensure that the Hyper File exists
@@ -75,8 +75,8 @@ class Publisher:
                                  f'on the Tableau server.')
 
             # Next, check if the datasource already exists and needs to be overwritten
-            create_mode = TSC.Server.PublishMode.CreateNew
-            if creation_mode.upper() == 'CREATENEW':
+            create_mode = TSC.Server.PublishMode.Overwrite
+            if creation_mode.upper() == 'OVERWRITE':
 
                 # Search for the datasource under project name
                 req_options = TSC.RequestOptions()
@@ -87,14 +87,11 @@ class Publisher:
                                                   TSC.RequestOptions.Operator.Equals,
                                                   self.datasource_name))
                 datasources, pagination = server.datasources.get(req_options=req_options)
-                for datasource in datasources:
-                    # the datasource already exists, overwrite
-                    if datasource.name == self.datasource_name:
-                        logging.info(f'Overwriting existing datasource named "{self.datasource_name}".')
-                        create_mode = TSC.Server.PublishMode.Overwrite
-                        break
+               
             elif creation_mode.upper() == 'APPEND':
                 create_mode = TSC.Server.PublishMode.Append
+                
+                
             else:
                 raise ValueError(f'Invalid "creation_mode" : {creation_mode}')
 
