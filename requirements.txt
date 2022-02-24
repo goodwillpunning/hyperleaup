@@ -1,4 +1,4 @@
-tableauserverclient==0.16.0
+tableauserverclient==0.17.0
 pyspark==3.1.2
 requests==2.26.0
 tableauhyperapi==0.0.13129

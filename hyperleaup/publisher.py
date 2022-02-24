@@ -41,7 +41,7 @@ class Publisher:
         self.datasource_luid = None
         self.hyper_file_path = hyper_file_path
 
-    def publish(self, creation_mode='CreateNew'):
+    def publish(self, creation_mode = 'Overwrite'):
         """Publishes a Hyper File to a Tableau Server"""
 
         # Ensure that the Hyper File exists
@@ -75,8 +75,8 @@ class Publisher:
                                  f'on the Tableau server.')
 
             # Next, check if the datasource already exists and needs to be overwritten
-            create_mode = TSC.Server.PublishMode.CreateNew
-            if creation_mode.upper() == 'CREATENEW':
+            create_mode = TSC.Server.PublishMode.Overwrite
+            if creation_mode.upper() == 'OVERWRITE':
 
                 # Search for the datasource under project name
                 req_options = TSC.RequestOptions()
@@ -87,25 +87,20 @@ class Publisher:
                                                   TSC.RequestOptions.Operator.Equals,
                                                   self.datasource_name))
                 datasources, pagination = server.datasources.get(req_options=req_options)
-                for datasource in datasources:
-                    # the datasource already exists, overwrite
-                    if datasource.name == self.datasource_name:
-                        logging.info(f'Overwriting existing datasource named "{self.datasource_name}".')
-                        create_mode = TSC.Server.PublishMode.Overwrite
-                        break
+               
             elif creation_mode.upper() == 'APPEND':
                 create_mode = TSC.Server.PublishMode.Append
+                
+                
             else:
                 raise ValueError(f'Invalid "creation_mode" : {creation_mode}')
 
             # Finally, publish the Hyper File to the Tableau server
             logging.info(f'Publishing Hyper File located at: "{self.hyper_file_path}"')
             logging.info(f'Create mode: {create_mode}')
-            datasource_item = TSC.DatasourceItem(project_id=self.project_id, name=self.datasource_name)
-            logging.info(f'Publishing datasource: \n{datasource_to_string(datasource_item)}')
-            datasource_item = server.datasources.publish(datasource_item=datasource_item,
-                                                         file_path=self.hyper_file_path,
-                                                         mode=create_mode)
+            datasource_item_id = TSC.DatasourceItem(project_id=self.project_id, name=self.datasource_name)
+            logging.info(f'Publishing datasource: \n{datasource_to_string(datasource_item_id)}')
+            datasource_item = server.datasources.publish(datasource_item_id, self.hyper_file_path, create_mode)
             self.datasource_luid = datasource_item.id
             logging.info(f'Published datasource to Tableau server. Datasource LUID : {self.datasource_luid}')
 
