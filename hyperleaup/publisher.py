@@ -101,11 +101,9 @@ class Publisher:
             # Finally, publish the Hyper File to the Tableau server
             logging.info(f'Publishing Hyper File located at: "{self.hyper_file_path}"')
             logging.info(f'Create mode: {create_mode}')
-            datasource_item = TSC.DatasourceItem(project_id=self.project_id, name=self.datasource_name)
-            logging.info(f'Publishing datasource: \n{datasource_to_string(datasource_item)}')
-            datasource_item = server.datasources.publish(datasource_item=datasource_item,
-                                                         file_path=self.hyper_file_path,
-                                                         mode=create_mode)
+            datasource_item_id = TSC.DatasourceItem(project_id=self.project_id, name=self.datasource_name)
+            logging.info(f'Publishing datasource: \n{datasource_to_string(datasource_item_id)}')
+            datasource_item = server.datasources.publish(datasource_item_id, self.hyper_file_path, create_mode)
             self.datasource_luid = datasource_item.id
             logging.info(f'Published datasource to Tableau server. Datasource LUID : {self.datasource_luid}')
 

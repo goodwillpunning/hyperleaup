@@ -135,11 +135,8 @@ def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefiniti
 def copy_parquet_to_hyper_file(parquet_path: str, name: str, table_def: TableDefinition) -> str:
     """Helper function that copies data from a Parquet file to a .hyper file."""
     hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
-    hyper_process_params = {
-        "experimental_external_format_parquet": "on"
-    }
-    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
-                      parameters=hyper_process_params) as hp:
+  
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
         with Connection(endpoint=hp.endpoint,
                         database=Path(hyper_database_path),
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
