@@ -27,6 +27,8 @@ class Publisher:
 
     def __init__(self, tableau_server_url: str,
                  username: str, password: str,
+                 token_name: str,
+                 token_value: str,
                  site_id: str,
                  project_name: str,
                  datasource_name: str,
@@ -34,6 +36,8 @@ class Publisher:
         self.tableau_server_url = tableau_server_url
         self.username = username
         self.password = password
+        self.token_name = token_name
+        self.token_value = token_value
         self.site_id = site_id
         self.project_name = project_name
         self.project_id = None
@@ -53,10 +57,19 @@ class Publisher:
         hyper_file_size = os.path.getsize(self.hyper_file_path)
         logging.info(f"The Hyper File size is (in bytes): {hyper_file_size}")
 
-        username_pw_auth = TSC.TableauAuth(username=self.username, password=self.password, site_id=self.site_id)
+        # Build authorization with Tableau Server
+        if self.username is not None and self.password is not None:
+            tableau_auth = TSC.TableauAuth(username=self.username, password=self.password, site_id=self.site_id)
+        elif self.token_name is not None and self.token_value is not None:
+            tableau_auth = TSC.PersonalAccessTokenAuth(token_name=self.token_name, personal_access_token=self.token_value, site_id=self.site_id)
+        else:
+            raise ValueError(f'Invalid credentials. Cannot create authorization to connect with Tableau Server.')
+
         server = TSC.Server(self.tableau_server_url)
         server.use_server_version()
-        with server.auth.sign_in(username_pw_auth):
+
+        # Sign-in to Tableau Server using auth object
+        with server.auth.sign_in(tableau_auth):
 
             # Search for project on the Tableau server, filtering by project name
             req_options = TSC.RequestOptions()
