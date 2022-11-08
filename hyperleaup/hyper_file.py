@@ -65,11 +65,11 @@ class HyperFile:
                     print(f"|-- {column.name}: {column.type} (nullable = {column.nullability})")
 
     def publish(self, tableau_server_url: str,
-                username: str, password: str, site_id: str = "",
-                project_name: str = "Default", datasource_name: str = "Hyperleaup_Extract") -> str:
+                username: str = None, password: str = None, token_name: str = None, token_value: str = None,
+                site_id: str = "", project_name: str = "Default", datasource_name: str = "Hyperleaup_Extract") -> str:
         """Publishes a Hyper File to a Tableau Server"""
         logging.info("Publishing Hyper File...")
-        publisher = Publisher(tableau_server_url, username, password,
+        publisher = Publisher(tableau_server_url, username, password, token_name, token_value,
                               site_id, project_name, datasource_name, self.path)
         self.luid = publisher.publish()
         logging.info(f"Hyper File published to Tableau Server with datasource LUID : {self.luid}")
