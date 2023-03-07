@@ -1,6 +1,7 @@
 import os
 import logging
 from shutil import copyfile
+from typing import Mapping
 
 from pyspark.sql import DataFrame
 from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, Inserter
@@ -22,7 +23,8 @@ class HyperFile:
                  sql: str = None, df: DataFrame = None,
                  is_dbfs_enabled: bool = False,
                  creation_mode: str = CreationMode.PARQUET.value,
-                 null_values_replacement: dict = None):
+                 null_values_replacement: dict = None,
+                 hyper_process_parameters: Mapping[str, str] = None):
         self.name = name
         # Create a DataFrame from Spark SQL
         if sql is not None and df is None:
@@ -33,6 +35,7 @@ class HyperFile:
         self.creation_mode = creation_mode
         self.is_dbfs_enabled = is_dbfs_enabled
         self.null_values_replacement = null_values_replacement
+        self.hyper_process_parameters = hyper_process_parameters
         # Do not create a Hyper File if loading an existing Hyper File
         if sql is None and df is None:
             self.path = None
@@ -41,12 +44,14 @@ class HyperFile:
                                 self.name,
                                 self.is_dbfs_enabled,
                                 self.creation_mode,
-                                self.null_values_replacement).create()
+                                self.null_values_replacement,
+                                self.hyper_process_parameters).create()
         self.luid = None
 
     def print_rows(self):
         """Prints the first 1,000 rows of a Hyper file"""
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint, database=self.path) as connection:
                 rows = connection.execute_list_query(f"SELECT * FROM {TableName('Extract', 'Extract')} LIMIT 1000")
                 print("Showing first 1,000 rows")
@@ -55,7 +60,8 @@ class HyperFile:
 
     def print_table_def(self, schema: str = "Extract", table: str = "Extract"):
         """Prints the table definition for a table in a Hyper file."""
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint, database=self.path) as connection:
                 table_name = TableName(schema, table)
                 table_definition = connection.catalog.get_table_definition(name=table_name)
@@ -108,7 +114,7 @@ class HyperFile:
         return copyfile(self.path, dest_path)
 
     @staticmethod
-    def load(path: str, is_dbfs_enabled: bool = False):
+    def load(path: str, is_dbfs_enabled: bool = False, hyper_process_parameters: Mapping[str, str] = None):
         """Loads a Hyper File from a source path to a temp dir"""
         # Guard against invalid paths
         if path.lower().startswith("s3"):
@@ -151,7 +157,7 @@ class HyperFile:
             hyper_file_path = path
 
         # Create a HyperFile object with existing Hyper File path
-        hf = HyperFile(name=name, is_dbfs_enabled=is_dbfs_enabled)
+        hf = HyperFile(name=name, is_dbfs_enabled=is_dbfs_enabled, hyper_process_parameters=hyper_process_parameters)
         hf.path = hyper_file_path
 
         return hf
@@ -174,7 +180,8 @@ class HyperFile:
         # Insert, the new data into Hyper File
         hyper_database_path = self.path
         logging.info(f'Inserting new data into Hyper database: {hyper_database_path}')
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint,
                             database=hyper_database_path,
                             create_mode=CreateMode.NONE) as connection:
