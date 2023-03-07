@@ -51,7 +51,8 @@ class HyperFile:
 
     def print_rows(self):
         """Prints the first 1,000 rows of a Hyper file"""
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=self.hyper_process_parameters) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint, database=self.path) as connection:
                 rows = connection.execute_list_query(f"SELECT * FROM {TableName('Extract', 'Extract')} LIMIT 1000")
                 print("Showing first 1,000 rows")
@@ -60,7 +61,8 @@ class HyperFile:
 
     def print_table_def(self, schema: str = "Extract", table: str = "Extract"):
         """Prints the table definition for a table in a Hyper file."""
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=self.hyper_process_parameters) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint, database=self.path) as connection:
                 table_name = TableName(schema, table)
                 table_definition = connection.catalog.get_table_definition(name=table_name)
@@ -179,7 +181,8 @@ class HyperFile:
         # Insert, the new data into Hyper File
         hyper_database_path = self.path
         logging.info(f'Inserting new data into Hyper database: {hyper_database_path}')
-        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=self.hyper_process_parameters) as hp:
+        with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU,
+                          parameters=self.hyper_process_parameters) as hp:
             with Connection(endpoint=hp.endpoint,
                             database=hyper_database_path,
                             create_mode=CreateMode.NONE) as connection:

@@ -100,6 +100,8 @@ class TestHyperFile(object):
         assert (num_rows == 6)
 
     def test_hyper_process_parameters(self):
+        data_path = "/tmp/process_parameters"
+
         log_dir = "/tmp/logs"
         log_file = f"{log_dir}/hyperd.log"
         if not os.path.exists(log_dir):
@@ -112,17 +114,15 @@ class TestHyperFile(object):
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
 
+        hyper_process_parameters = {"log_dir": log_dir}
+
         for mode in ["insert", "copy", "parquet"]:
             if os.path.exists(log_file):
                 os.remove(log_file)
 
-            hf = HyperFile(name="employees", df=df, is_dbfs_enabled=False, creation_mode=mode,
-                           hyper_process_parameters={"log_dir": log_dir})
+            HyperFile(name="employees", df=df, is_dbfs_enabled=False, creation_mode=mode,
+                      hyper_process_parameters=hyper_process_parameters).save(data_path)
 
-            # Ensure that the Hyper File can be saved to an alternative location
-            new_path = '/tmp/save/'
-            hf.save(new_path)
-
-            # Save operation should not update the current Hyper File's path
+            # Make sure that the logs have been created in the non-standard location
             assert (os.path.exists(log_file))
             assert (os.path.isfile(log_file))
