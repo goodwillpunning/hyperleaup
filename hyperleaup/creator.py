@@ -322,9 +322,7 @@ class Creator:
 
             # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
-            database_path = copy_parquet_to_hyper_file(parquet_path,
-                                                       self.name,
-                                                       table_def,
+            database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def,
                                                        self.hyper_process_parameters)
 
         else:

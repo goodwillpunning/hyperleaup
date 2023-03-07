@@ -25,7 +25,7 @@ class TestHyperFile(object):
             (104, "Management"),
             (105, "HR")
         ]
-        get_spark_session() \
+        get_spark_session()\
             .createDataFrame(data, ["id", "department"]) \
             .createOrReplaceGlobalTempView("departments")
         sql = "SELECT * FROM global_temp.departments"
@@ -50,7 +50,7 @@ class TestHyperFile(object):
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         hf = HyperFile(name="employees", df=df, is_dbfs_enabled=False, creation_mode="insert")
-        assert (hf.path == "/tmp/hyperleaup/employees/employees.hyper")
+        assert(hf.path == "/tmp/hyperleaup/employees/employees.hyper")
 
     def test_save(self):
         data = [
@@ -68,18 +68,18 @@ class TestHyperFile(object):
         hf.save(new_path)
 
         # Save operation should not update the current Hyper File's path
-        assert (current_path == hf.path)
-        assert (os.path.exists(expected_path))
-        assert (os.path.isfile(expected_path))
+        assert(current_path == hf.path)
+        assert(os.path.exists(expected_path))
+        assert(os.path.isfile(expected_path))
 
     def test_load(self):
         # Ensure that existing Hyper Files can be loaded
         existing_hf_path = '/tmp/save/employees.hyper'
-        assert (os.path.exists(existing_hf_path))
-        assert (os.path.isfile(existing_hf_path))
+        assert(os.path.exists(existing_hf_path))
+        assert(os.path.isfile(existing_hf_path))
         hf = HyperFile.load(path=existing_hf_path, is_dbfs_enabled=False)
-        assert (hf.path == existing_hf_path)
-        assert (hf.name == 'employees')
+        assert(hf.path == existing_hf_path)
+        assert(hf.name == 'employees')
 
     def test_append(self):
         # Ensure that new data can be appended to an existing Hyper File
@@ -97,7 +97,7 @@ class TestHyperFile(object):
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         hf.append(df=df)
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/save/employees.hyper")
-        assert (num_rows == 6)
+        assert(num_rows == 6)
 
     def test_hyper_process_parameters(self):
         data_path = "/tmp/process_parameters"
@@ -124,5 +124,5 @@ class TestHyperFile(object):
                       hyper_process_parameters=hyper_process_parameters).save(data_path)
 
             # Make sure that the logs have been created in the non-standard location
-            assert (os.path.exists(log_file))
-            assert (os.path.isfile(log_file))
+            assert(os.path.exists(log_file))
+            assert(os.path.isfile(log_file))

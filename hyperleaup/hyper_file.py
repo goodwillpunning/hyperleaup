@@ -45,8 +45,7 @@ class HyperFile:
                                 self.is_dbfs_enabled,
                                 self.creation_mode,
                                 self.null_values_replacement,
-                                self.hyper_process_parameters
-                                ).create()
+                                self.hyper_process_parameters).create()
         self.luid = None
 
     def print_rows(self):
