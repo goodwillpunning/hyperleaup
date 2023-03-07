@@ -1,7 +1,7 @@
 import os
 import logging
 from shutil import copyfile
-from typing import List, Any
+from typing import List, Any, Mapping
 from hyperleaup.creation_mode import CreationMode
 from pyspark.sql import DataFrame
 from pyspark.sql.types import *
@@ -93,14 +93,15 @@ def get_table_def(df: DataFrame, schema_name: str, table_name: str) -> TableDefi
     )
 
 
-def insert_data_into_hyper_file(data: List[Any], name: str, table_def: TableDefinition):
+def insert_data_into_hyper_file(data: List[Any], name: str, table_def: TableDefinition,
+        hyper_process_parameters: Mapping[str, str] = None):
     """Helper function that inserts data into a .hyper file."""
     # first, create a temp directory on the driver node
     tmp_dir = f"/tmp/hyperleaup/{name}/"
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
     hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
-    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=hyper_process_parameters) as hp:
         with Connection(endpoint=hp.endpoint,
                         database=hyper_database_path,
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
@@ -113,10 +114,11 @@ def insert_data_into_hyper_file(data: List[Any], name: str, table_def: TableDefi
     return hyper_database_path
 
 
-def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefinition) -> str:
+def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefinition,
+        hyper_process_parameters: Mapping[str, str] = None) -> str:
     """Helper function that copies data from a CSV file to a .hyper file."""
     hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
-    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=hyper_process_parameters) as hp:
         with Connection(endpoint=hp.endpoint,
                         database=Path(hyper_database_path),
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
@@ -132,11 +134,12 @@ def copy_data_into_hyper_file(csv_path: str, name: str, table_def: TableDefiniti
     return hyper_database_path
 
 
-def copy_parquet_to_hyper_file(parquet_path: str, name: str, table_def: TableDefinition) -> str:
+def copy_parquet_to_hyper_file(parquet_path: str, name: str, table_def: TableDefinition,
+        hyper_process_parameters: Mapping[str, str] = None) -> str:
     """Helper function that copies data from a Parquet file to a .hyper file."""
     hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
   
-    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU, parameters=hyper_process_parameters) as hp:
         with Connection(endpoint=hp.endpoint,
                         database=Path(hyper_database_path),
                         create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
@@ -258,7 +261,8 @@ class Creator:
     def __init__(self, df: DataFrame, name: str,
                  is_dbfs_enabled: bool = False,
                  creation_mode: str = CreationMode.COPY.value,
-                 null_values_replacement = None):
+                 null_values_replacement = None,
+                 hyper_process_parameters: Mapping[str, str] = None):
         if null_values_replacement is None:
             null_values_replacement = {}
         self.df = df
@@ -266,6 +270,7 @@ class Creator:
         self.is_dbfs_enabled = is_dbfs_enabled
         self.creation_mode = creation_mode
         self.null_values_replacement = null_values_replacement
+        self.hyper_process_parameters = hyper_process_parameters
 
     def create(self) -> str:
         """Creates a Tableau Hyper File given a SQL statement"""
@@ -285,7 +290,7 @@ class Creator:
 
             # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
-            database_path = copy_data_into_hyper_file(csv_path, self.name, table_def)
+            database_path = copy_data_into_hyper_file(csv_path, self.name, table_def, self.hyper_process_parameters)
 
         elif self.creation_mode.upper() == CreationMode.INSERT.value:
 
@@ -299,7 +304,7 @@ class Creator:
 
             # Insert data into a Tableau .hyper file
             logging.info("Inserting data into Hyper File...")
-            database_path = insert_data_into_hyper_file(data, self.name, table_def)
+            database_path = insert_data_into_hyper_file(data, self.name, table_def, self.hyper_process_parameters)
 
         elif self.creation_mode.upper() == CreationMode.PARQUET.value:
 
@@ -317,7 +322,7 @@ class Creator:
 
             # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
-            database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def)
+            database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def, self.hyper_process_parameters)
 
         else:
             raise ValueError(f'Invalid "creation_mode" specified: {self.creation_mode}')
