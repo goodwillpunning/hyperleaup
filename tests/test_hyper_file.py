@@ -1,5 +1,4 @@
 import os
-
 from hyperleaup import HyperFile
 from hyperleaup.spark_fixture import get_spark_session
 from tests.test_utils import TestUtils
@@ -26,7 +25,7 @@ class TestHyperFile(object):
             (105, "HR")
         ]
         get_spark_session()\
-            .createDataFrame(data, ["id", "department"]) \
+            .createDataFrame(data, ["id", "department"])\
             .createOrReplaceGlobalTempView("departments")
         sql = "SELECT * FROM global_temp.departments"
         hf = HyperFile(name="employees", sql=sql)
@@ -86,7 +85,7 @@ class TestHyperFile(object):
         existing_hf_path = '/tmp/save/employees.hyper'
         hf = HyperFile.load(path=existing_hf_path, is_dbfs_enabled=False)
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/save/employees.hyper")
-        assert (num_rows == 3)
+        assert(num_rows == 3)
 
         # Create new data
         data = [
