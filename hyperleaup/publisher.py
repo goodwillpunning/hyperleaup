@@ -23,7 +23,10 @@ def datasource_to_string(datasource: DatasourceItem) -> str:
 
 
 class Publisher:
-    """Publishes a Hyper file to a Tableau Server"""
+    """Publishes a Hyper file to a Tableau Server
+    
+    
+     - asJob: 	A Boolean value that is used to publish data sources asynchronously. If you set this value to false (the default), the publishing process runs as a synchronous process. If a data source is very large, the process might time out before it finishes. If you set this value to true, the process runs asynchronously, and a job will start to perform the publishing process and return the job ID"""
 
     def __init__(self, tableau_server_url: str,
                  username: str, password: str,
@@ -32,7 +35,8 @@ class Publisher:
                  site_id: str,
                  project_name: str,
                  datasource_name: str,
-                 hyper_file_path: str):
+                 hyper_file_path: str,
+                 as_job: bool):
         self.tableau_server_url = tableau_server_url
         self.username = username
         self.password = password
@@ -44,6 +48,7 @@ class Publisher:
         self.datasource_name = datasource_name
         self.datasource_luid = None
         self.hyper_file_path = hyper_file_path
+        self.as_job = as_job
 
     def publish(self, creation_mode = 'Overwrite'):
         """Publishes a Hyper File to a Tableau Server"""
@@ -113,7 +118,7 @@ class Publisher:
             logging.info(f'Create mode: {create_mode}')
             datasource_item_id = TSC.DatasourceItem(project_id=self.project_id, name=self.datasource_name)
             logging.info(f'Publishing datasource: \n{datasource_to_string(datasource_item_id)}')
-            datasource_item = server.datasources.publish(datasource_item_id, self.hyper_file_path, create_mode)
+            datasource_item = server.datasources.publish(datasource_item_id, self.hyper_file_path, create_mode, as_job=self.as_job)
             self.datasource_luid = datasource_item.id
             logging.info(f'Published datasource to Tableau server. Datasource LUID : {self.datasource_luid}')
 
