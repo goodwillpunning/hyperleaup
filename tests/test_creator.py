@@ -28,12 +28,20 @@ class TestCreator(object):
         assert(converted_col.nullability is NULLABLE)
         assert(converted_col.type == SqlType.date())
 
-        # ensure timestamps can be converted correctly
+        # ensure default timestamps can be converted correctly
         timestamp_col = StructField('created_at', TimestampType(), False)
         converted_col = convert_struct_field(timestamp_col)
         assert(converted_col.name == Name('created_at'))
         assert(converted_col.nullability is NOT_NULLABLE)
         assert(converted_col.type == SqlType.timestamp())
+        
+        # ensure timestamps can be converted correctly
+        timestamp_tz_col = StructField('created_at_tz', TimestampType(), False)
+        converted_col = convert_struct_field(timestamp_tz_col, timestamp_with_timezone=True)
+        assert(converted_col.name == Name('created_at_tz'))
+        assert(converted_col.nullability is NOT_NULLABLE)
+        assert(converted_col.type == SqlType.timestamp_tz())
+
 
     def test_get_table_def(self):
         data = [
@@ -130,7 +138,7 @@ class TestCreator(object):
         parquet_file = write_parquet_to_local_file_system(df, "employees")
         assert(parquet_file.startswith("/tmp/hyperleaup/employees/"))
 
-    def test_create(self):
+    def test_create(self, is_dbfs_enabled=False):
         data = [
             (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
             (1002, "John", "Doe", "1988-05-03", 33.0, False),
@@ -142,18 +150,19 @@ class TestCreator(object):
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
 
         # Ensure that a Hyper file can be created with date and timestamp columns
-        df.withColumn("hire_date", current_date())
-        df.withColumn("last_updated", current_timestamp())
+        df = df.withColumn("hire_date", current_date())
+        df = df.withColumn("last_updated", current_timestamp())
 
-        creator = Creator(df, 'employees', False)
+        creator = Creator(df, 'employees', is_dbfs_enabled)
         hyper_file_path = creator.create()
         assert(hyper_file_path == "/tmp/hyperleaup/employees/employees.hyper")
         tables = TestUtils.get_tables("Extract", "/tmp/hyperleaup/employees/employees.hyper")
         assert(len(tables) == 1)
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees/employees.hyper")
         assert(num_rows == 5)
+        return df
 
-    def test_creation_mode(self):
+    def test_creation_mode(self, is_dbfs_enabled=False):
         data = [
             (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
             (1002, "John", "Doe", "1988-05-03", 33.0, False),
@@ -165,7 +174,7 @@ class TestCreator(object):
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
 
         # creation_mode using a str
-        creator = Creator(df=df, name='employees', is_dbfs_enabled=False, creation_mode="Insert")
+        creator = Creator(df=df, name='employees', is_dbfs_enabled=is_dbfs_enabled, creation_mode="Insert")
         hyper_file_path = creator.create()
         assert (hyper_file_path == "/tmp/hyperleaup/employees/employees.hyper")
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees/employees.hyper")
