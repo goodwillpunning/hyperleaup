@@ -22,7 +22,9 @@ class HyperFile:
                  sql: str = None, df: DataFrame = None,
                  is_dbfs_enabled: bool = False,
                  creation_mode: str = CreationMode.PARQUET.value,
-                 null_values_replacement: dict = None):
+                 null_values_replacement: dict = None,
+                 timestamp_with_timezone: bool = False,
+                 allow_nulls: bool = False):
         self.name = name
         # Create a DataFrame from Spark SQL
         if sql is not None and df is None:
@@ -33,6 +35,8 @@ class HyperFile:
         self.creation_mode = creation_mode
         self.is_dbfs_enabled = is_dbfs_enabled
         self.null_values_replacement = null_values_replacement
+        self.timestamp_with_timezone = timestamp_with_timezone
+        self.allow_nulls = allow_nulls
         # Do not create a Hyper File if loading an existing Hyper File
         if sql is None and df is None:
             self.path = None
@@ -41,7 +45,9 @@ class HyperFile:
                                 self.name,
                                 self.is_dbfs_enabled,
                                 self.creation_mode,
-                                self.null_values_replacement).create()
+                                self.null_values_replacement,
+                                self.timestamp_with_timezone,
+                                self.allow_nulls).create()
         self.luid = None
 
     def print_rows(self):
