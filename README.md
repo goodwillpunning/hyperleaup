@@ -27,7 +27,7 @@ A list of usage examples is available in the `demo` folder of this repo as a [Da
 The following code snippet creates a Tableau Hyper file from a Spark SQL statement and publishes it as a datasource to a Tableau Server.
 
 ```python
-from hyperleaup import HyperFile
+from src.hyperleaup import HyperFile
 
 # Step 1: Create a Hyper File from Spark SQL
 query = """
@@ -36,7 +36,6 @@ select *
  where action_date > '2015-01-01'
 """
 hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True)
-
 
 # Step 2: Publish Hyper File to a Tableau Server
 hf.publish(tableau_server_url,
