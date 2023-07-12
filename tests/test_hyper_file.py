@@ -1,6 +1,7 @@
 import os
-from src.hyperleaup import HyperFile
-from src.hyperleaup.spark_fixture import get_spark_session
+
+from hyperleaup import HyperFile
+from hyperleaup.spark_fixture import get_spark_session
 
 from tests.test_utils import TestUtils
 

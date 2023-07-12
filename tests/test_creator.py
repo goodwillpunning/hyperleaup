@@ -2,11 +2,11 @@ from pyspark.sql.functions import current_date, current_timestamp
 from tableauhyperapi import SqlType, NOT_NULLABLE, NULLABLE, TableDefinition, TableName
 from tableauhyperapi import Name
 
-from src.hyperleaup import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator, \
-    write_csv_to_local_file_system, write_parquet_to_local_file_system
 from pyspark.sql.types import *
 
-from src.hyperleaup.spark_fixture import get_spark_session
+from hyperleaup import convert_struct_field, get_table_def, get_rows, insert_data_into_hyper_file, Creator, \
+    write_csv_to_local_file_system, write_parquet_to_local_file_system
+from hyperleaup.spark_fixture import get_spark_session
 
 from tests.test_utils import TestUtils
 
