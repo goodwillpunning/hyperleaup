@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hyperleaup"
+version = "0.1.0"
+authors = [
+    { name="Will Girten", email="will.girten@databricks.com" },
+]
+description = "Create and publish Tableau Hyper files from Apache Spark DataFrames and Spark SQL."
+readme = "README.md"
+requires-python = ">=3.6"
+keywords = ["Spark", "Tableau", "extract", "hyper"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pyspark",
+    "tableauhyperapi",
+    "requests",
+    "tableauserverclient",
+    "urllib3"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/goodwillpunning/hyperleaup"
+"Bug Tracker" = "https://github.com/goodwillpunning/hyperleaup/issues"

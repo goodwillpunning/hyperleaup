@@ -37,7 +37,6 @@ select *
 """
 hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True)
 
-
 # Step 2: Publish Hyper File to a Tableau Server
 hf.publish(tableau_server_url,
            username,
@@ -61,7 +60,7 @@ Support, questions, and feature requests can be submitted through the Issues pag
 Please understand that issues with the use of this code will not be answered or investigated by Databricks Support.  
 
 ## Core Contribution team
-* Lead Developer: [Will Girten](https://www.linkedin.com/in/willgirten/), RSA, Databricks
+* Lead Developer: [Will Girten](https://www.linkedin.com/in/willgirten/), Lead SSA @Databricks
 * Puru Shrestha, Sr. BI Developer
 
 ## Project Support
@@ -77,7 +76,7 @@ They will be reviewed as time permits, but there are no formal SLAs for support.
 ## Building the Project
 To build the project: <br>
 ```
-python setup.py bdist_egg
+python3 -m build
 ```
 
 ## Running Pytests
