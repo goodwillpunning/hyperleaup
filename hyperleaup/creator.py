@@ -3,6 +3,7 @@ import logging
 from shutil import copyfile
 from typing import List, Any
 from hyperleaup.creation_mode import CreationMode
+from hyperleaup.hyper_file import HyperFileConfig
 from pyspark.sql import DataFrame
 from pyspark.sql.types import *
 from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, TableName, HyperProcess, Telemetry, \
@@ -278,8 +279,7 @@ class Creator:
                  is_dbfs_enabled: bool = False,
                  creation_mode: str = CreationMode.COPY.value,
                  null_values_replacement = None,
-                 timestamp_with_timezone = False,
-                 allow_nulls = False):
+                 config: HyperFileConfig = HyperFileConfig()):
         if null_values_replacement is None:
             null_values_replacement = {}
         self.df = df
@@ -287,8 +287,7 @@ class Creator:
         self.is_dbfs_enabled = is_dbfs_enabled
         self.creation_mode = creation_mode
         self.null_values_replacement = null_values_replacement
-        self.timestamp_with_timezone = timestamp_with_timezone
-        self.allow_nulls = allow_nulls
+        self.config = config
 
     def create(self) -> str:
         """Creates a Tableau Hyper File given a SQL statement"""
@@ -297,14 +296,14 @@ class Creator:
             # Write Spark DataFrame to CSV so that a file COPY can be done
             if not self.is_dbfs_enabled:
                 logging.info("Writing Spark DataFrame to local disk...")
-                csv_path = write_csv_to_local_file_system(self.df, self.name, self.allow_nulls)
+                csv_path = write_csv_to_local_file_system(self.df, self.name, self.config.allow_nulls)
             else:
                 logging.info("Writing Spark DataFrame to DBFS...")
-                csv_path = write_csv_to_dbfs(self.df, self.name, self.allow_nulls)
+                csv_path = write_csv_to_dbfs(self.df, self.name, self.config.allow_nulls)
 
             # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
             logging.info("Generating Tableau Table Definition...")
-            table_def = get_table_def(self.df, "Extract", "Extract", self.timestamp_with_timezone)
+            table_def = get_table_def(self.df, "Extract", "Extract", self.config.timestamp_with_timezone)
 
             # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
@@ -318,7 +317,7 @@ class Creator:
 
             # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
             logging.info("Converting Spark DataFrame schema to Tableau Table Definition...")
-            table_def = get_table_def(self.df, "Extract", "Extract", self.timestamp_with_timezone)
+            table_def = get_table_def(self.df, "Extract", "Extract", self.config.timestamp_with_timezone)
 
             # Insert data into a Tableau .hyper file
             logging.info("Inserting data into Hyper File...")
@@ -329,18 +328,19 @@ class Creator:
             # Write Spark DataFrame to Parquet so that a file COPY can be done
             if not self.is_dbfs_enabled:
                 logging.info("Writing Spark DataFrame to local disk...")
-                parquet_path = write_parquet_to_local_file_system(self.df, self.name, self.allow_nulls)
+                parquet_path = write_parquet_to_local_file_system(self.df, self.name, self.config.allow_nulls)
             else:
                 logging.info("Writing Spark DataFrame to DBFS...")
-                parquet_path = write_parquet_to_dbfs(self.df, self.name, self.allow_nulls)
+                parquet_path = write_parquet_to_dbfs(self.df, self.name, self.config.allow_nulls)
 
-            # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
+            # # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
             logging.info("Generating Tableau Table Definition...")
-            table_def = get_table_def(self.df, "Extract", "Extract", self.timestamp_with_timezone)
+            table_def = get_table_def(self.df, "Extract", "Extract", self.config.timestamp_with_timezone)
 
-            # COPY data into a Tableau .hyper file
+            # # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
             database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def)
+            # database_path = parquet_path
 
         else:
             raise ValueError(f'Invalid "creation_mode" specified: {self.creation_mode}')
