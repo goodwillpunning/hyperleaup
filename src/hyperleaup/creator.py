@@ -3,7 +3,7 @@ import logging
 from shutil import copyfile
 from typing import List, Any
 from hyperleaup.creation_mode import CreationMode
-from hyperleaup.hyper_file import HyperFileConfig
+from hyperleaup.hyper_config import HyperFileConfig
 from pyspark.sql import DataFrame
 from pyspark.sql.types import *
 from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, TableName, HyperProcess, Telemetry, \
