@@ -6,12 +6,13 @@ from hyperleaup.creation_mode import CreationMode
 from hyperleaup.hyper_config import HyperFileConfig
 from pyspark.sql import DataFrame
 from pyspark.sql.types import *
+from pyspark.sql.functions import col
 from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, TableName, HyperProcess, Telemetry, \
     Inserter, Connection, CreateMode
 from pathlib import Path
 
 
-def clean_dataframe(df: DataFrame) -> DataFrame:
+def clean_dataframe(df: DataFrame, allow_nulls=False, convert_decimal_precision=False) -> DataFrame:
     """Replaces null or NaN values with '' and 0s"""
     schema = df.schema
     integer_cols = []
@@ -19,29 +20,40 @@ def clean_dataframe(df: DataFrame) -> DataFrame:
     double_cols = []
     float_cols = []
     string_cols = []
-    for field in schema:
-        if field.dataType == IntegerType():
-            integer_cols.append(field.name)
-        elif field.dataType == LongType():
-            long_cols.append(field.name)
-        elif field.dataType == DoubleType():
-            double_cols.append(field.name)
-        elif field.dataType == FloatType():
-            float_cols.append(field.name)
-        elif field.dataType == StringType():
-            string_cols.append(field.name)
 
-    # Replace null and NaN values with 0
-    if len(integer_cols) > 0:
-        df = df.na.fill(0, integer_cols)
-    elif len(long_cols) > 0:
-        df = df.na.fill(0, long_cols)
-    elif len(double_cols) > 0:
-        df = df.na.fill(0.0, double_cols)
-    elif len(float_cols) > 0:
-        df = df.na.fill(0.0, float_cols)
-    elif len(string_cols) > 0:
-        df = df.na.fill('', string_cols)
+    if allow_nulls == False:
+        for field in schema:
+            if field.dataType == IntegerType():
+                integer_cols.append(field.name)
+            elif field.dataType == LongType():
+                long_cols.append(field.name)
+            elif field.dataType == DoubleType():
+                double_cols.append(field.name)
+            elif field.dataType == FloatType():
+                float_cols.append(field.name)
+            elif field.dataType == StringType():
+                string_cols.append(field.name)
+
+        # Replace null and NaN values with 0
+        if len(integer_cols) > 0:
+            df = df.na.fill(0, integer_cols)
+        elif len(long_cols) > 0:
+            df = df.na.fill(0, long_cols)
+        elif len(double_cols) > 0:
+            df = df.na.fill(0.0, double_cols)
+        elif len(float_cols) > 0:
+            df = df.na.fill(0.0, float_cols)
+        elif len(string_cols) > 0:
+            df = df.na.fill('', string_cols)
+        
+    if convert_decimal_precision == True:
+        for field in schema:
+            if str(field.dataType).startswith("DecimalType") and field.dataType.precision > 18:
+                scale = field.dataType.scale
+                if scale >= 18:
+                    raise ValueError("Decimal with scale >= 18 cannot be supported by HyperFile.")
+                logging.warn(f"Converting {field.name} to lower precision -> (18, {scale}). This may reduce actual precision of values in this column.")
+                df = df.withColumn(field.name, col(field.name).cast(DecimalType(18, scale))) 
 
     return df
 
@@ -237,16 +249,13 @@ def write_parquet_to_local_file_system(df: DataFrame, name: str, allow_nulls: bo
                 return f"{tmp_dir}/{file}"
 
 
-def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls: bool = False) -> str:
+def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert_decimal_precision = False) -> str:
     """Moves a Parquet file written to a Databricks Filesystem to a temp directory on the driver node."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
-    # write the DataFrame to DBFS as a single Parquet file
-    if not allow_nulls:
-      cleaned_df = clean_dataframe(df)
-    else:
-      cleaned_df = df
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
     
+    # write the DataFrame to DBFS as a single Parquet file
     cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
@@ -328,19 +337,20 @@ class Creator:
             # Write Spark DataFrame to Parquet so that a file COPY can be done
             if not self.is_dbfs_enabled:
                 logging.info("Writing Spark DataFrame to local disk...")
-                parquet_path = write_parquet_to_local_file_system(self.df, self.name, self.config.allow_nulls)
+                parquet_path = write_parquet_to_local_file_system(self.df, self.name, self.config.allow_nulls,
+                                                                  self.config.convert_decimal_precision)
             else:
                 logging.info("Writing Spark DataFrame to DBFS...")
-                parquet_path = write_parquet_to_dbfs(self.df, self.name, self.config.allow_nulls)
+                parquet_path = write_parquet_to_dbfs(self.df, self.name, self.config.allow_nulls, 
+                                                     self.config.convert_decimal_precision)
 
-            # # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
+            # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
             logging.info("Generating Tableau Table Definition...")
             table_def = get_table_def(self.df, "Extract", "Extract", self.config.timestamp_with_timezone)
-
-            # # COPY data into a Tableau .hyper file
+            
+            # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
             database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def)
-            # database_path = parquet_path
 
         else:
             raise ValueError(f'Invalid "creation_mode" specified: {self.creation_mode}')
