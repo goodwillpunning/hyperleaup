@@ -1,6 +1,6 @@
 import os
 
-from hyperleaup import HyperFile
+from hyperleaup import HyperFile, HyperFileConfig
 from hyperleaup.spark_fixture import get_spark_session
 from pyspark.sql.functions import current_timestamp
 
@@ -17,7 +17,8 @@ class TestHyperFile(object):
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         df = df.withColumn("last_updated", current_timestamp())
-        hf = HyperFile(name="employees", df=df, is_dbfs_enabled=is_dbfs_enabled, timestamp_with_timezone=True)
+        hf_config = HyperFileConfig(timestamp_with_timezone=True)
+        hf = HyperFile(name="employees", df=df, is_dbfs_enabled=is_dbfs_enabled, config=hf_config)
         hf.print_rows()
 
         # Ensure that a HyperFile can be created from Spark SQL
@@ -32,7 +33,8 @@ class TestHyperFile(object):
             .withColumn("last_updated", current_timestamp())\
             .createOrReplaceGlobalTempView("departments")
         sql = "SELECT * FROM global_temp.departments"
-        hf = HyperFile(name="employees", sql=sql, is_dbfs_enabled=is_dbfs_enabled, timestamp_with_timezone=True)
+        hf_config = HyperFileConfig(timestamp_with_timezone=True)
+        hf = HyperFile(name="employees", sql=sql, is_dbfs_enabled=is_dbfs_enabled, config=hf_config)
         hf.print_rows()
 
     def test_print_table_definition(self, is_dbfs_enabled=False):
@@ -43,7 +45,8 @@ class TestHyperFile(object):
         ]
         df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
         df = df.withColumn("last_updated", current_timestamp())
-        hf = HyperFile(name="employees", df=df, is_dbfs_enabled=is_dbfs_enabled, timestamp_with_timezone=True)
+        hf_config = HyperFileConfig(timestamp_with_timezone=True)
+        hf = HyperFile(name="employees", df=df, is_dbfs_enabled=is_dbfs_enabled, config=hf_config)
         hf.print_table_def()
 
     def test_creation_mode(self):
