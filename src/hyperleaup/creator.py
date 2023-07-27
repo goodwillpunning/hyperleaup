@@ -168,16 +168,13 @@ def copy_parquet_to_hyper_file(parquet_path: str, name: str, table_def: TableDef
     return hyper_database_path
 
 
-def write_csv_to_local_file_system(df: DataFrame, name: str, allow_nulls: bool = False) -> str:
+def write_csv_to_local_file_system(df: DataFrame, name: str, allow_nulls: bool = False, convert_decimal_precision = False) -> str:
     """Writes a Spark DataFrame to a single CSV file on the local filesystem."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
+    
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
 
     # write the DataFrame to local disk as a single CSV file
-    if not allow_nulls:
-      cleaned_df = clean_dataframe(df)
-    else:
-      cleaned_df = df
-
     cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
@@ -191,16 +188,13 @@ def write_csv_to_local_file_system(df: DataFrame, name: str, allow_nulls: bool =
                 return f"{tmp_dir}/{file}"
 
 
-def write_csv_to_dbfs(df: DataFrame, name: str, allow_nulls: bool = False) -> str:
+def write_csv_to_dbfs(df: DataFrame, name: str, allow_nulls: bool = False, convert_decimal_precision = False) -> str:
     """Moves a CSV written to a Databricks Filesystem to a temp directory on the driver node."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
-    # write the DataFrame to DBFS as a single CSV file
-    if not allow_nulls:
-      cleaned_df = clean_dataframe(df)
-    else:
-      cleaned_df = df
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
 
+    # write the DataFrame to DBFS as a single CSV file
     cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
@@ -228,16 +222,14 @@ def write_csv_to_dbfs(df: DataFrame, name: str, allow_nulls: bool = False) -> st
     return dest_path
 
 
-def write_parquet_to_local_file_system(df: DataFrame, name: str, allow_nulls: bool = False) -> str:
+def write_parquet_to_local_file_system(df: DataFrame, name: str, allow_nulls: bool = False,
+                                       convert_decimal_precision = False) -> str:
     """Writes a Spark DataFrame to a single Parquet file on the local filesystem."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
-    # write the DataFrame to local disk as a single CSV file
-    if not allow_nulls:
-      cleaned_df = clean_dataframe(df)
-    else:
-      cleaned_df = df
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
 
+    # write the DataFrame to local disk as a single CSV file
     cleaned_df.coalesce(1).write \
         .option("delimiter", ",") \
         .option("header", "true") \
@@ -305,10 +297,12 @@ class Creator:
             # Write Spark DataFrame to CSV so that a file COPY can be done
             if not self.is_dbfs_enabled:
                 logging.info("Writing Spark DataFrame to local disk...")
-                csv_path = write_csv_to_local_file_system(self.df, self.name, self.config.allow_nulls)
+                csv_path = write_csv_to_local_file_system(self.df, self.name, self.config.allow_nulls, 
+                                                          self.config.convert_decimal_precision)
             else:
                 logging.info("Writing Spark DataFrame to DBFS...")
-                csv_path = write_csv_to_dbfs(self.df, self.name, self.config.allow_nulls)
+                csv_path = write_csv_to_dbfs(self.df, self.name, self.config.allow_nulls, 
+                                             self.config.convert_decimal_precision)
 
             # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
             logging.info("Generating Tableau Table Definition...")
