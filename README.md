@@ -35,6 +35,7 @@ select *
   from transaction_history
  where action_date > '2015-01-01'
 """
+
 hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True)
 
 # Step 2: Publish Hyper File to a Tableau Server
@@ -52,6 +53,28 @@ select *
  where action_date > last_publish_date
 """
 hf.append(sql=new_data)
+```
+
+## Hyper File Options
+There is an optional `HyperFileConfig` that can be used to change default behaviors.
+  - timestamp_with_timezone:
+    - If `True`, use timestamptz datatype with HyperFile. Recommended if using timestamp values with Parquet create mode. (default=False)
+  - allow_nulls:
+    - If `True`, skip default behavior of replacing null numeric and strings with non-null values. (default=False)
+  - convert_decimal_precision:
+    - If `True`, automatically convert decimals with precision over 18 down to 18. This has risk of data truncation. (default=False)
+
+
+### Example using configs
+```python
+from hyperleaup import HyperFile, HyperFileConfig
+
+hf_config = HyperFileConfig(
+              timestamp_with_timezone=True, 
+              allow_nulls=False,
+              convert_decimal_precision=False)
+
+hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True)
 ```
 
 ## Legal Information
