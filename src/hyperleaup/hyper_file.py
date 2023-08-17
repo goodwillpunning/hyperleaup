@@ -3,12 +3,12 @@ import logging
 from shutil import copyfile
 
 from pyspark.sql import DataFrame
-from tableauhyperapi import HyperProcess, Telemetry, Connection, CreateMode, Inserter
+from tableauhyperapi import HyperProcess, TableName, Telemetry, Connection, CreateMode, Inserter
+
 from hyperleaup.creation_mode import CreationMode
 from hyperleaup.creator import Creator
 from hyperleaup.hyper_utils import HyperUtils
 from hyperleaup.publisher import Publisher
-from tableauhyperapi import TableName
 from hyperleaup.spark_fixture import get_spark_session
 
 
