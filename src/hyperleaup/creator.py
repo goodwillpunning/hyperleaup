@@ -294,7 +294,6 @@ def write_parquet_multifile_to_dbfs(df: DataFrame, name: str, allow_nulls = Fals
 
     parquet_files = []
     for item in files:
-      print(item)
       if item.name.endswith(".parquet"):
         parquet_files.append(item.name)
         src_path = dbfs_tmp_dir + item.name
