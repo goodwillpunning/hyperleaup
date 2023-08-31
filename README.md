@@ -21,7 +21,11 @@ Apache Spark + Tableau Hyper API:
 or even incorporate it as a final step in an ETL pipeline, e.g. refresh data extract with latest CDC.
 
 ## Getting Started
-A list of usage examples is available in the `demo` folder of this repo as a [Databricks Notebook Archive (DBC)](demo/Hyperleaup-Demo.dbc).
+Install latest release from PyPI:  
+`pip install hyperleaup`
+
+A list of usage examples is available in the `demo` folder of this repo as a [Databricks Notebook Archive (DBC)](demo/Hyperleaup-Demo.dbc) or IPython Notebook (demo/Hyperleaup-Demo.ipynb).
+
 
 ## Example usage
 The following code snippet creates a Tableau Hyper file from a Spark SQL statement and publishes it as a datasource to a Tableau Server.
@@ -54,6 +58,20 @@ select *
 """
 hf.append(sql=new_data)
 ```
+
+## Creation Mode
+There are several options for how to create the Hyper file that can be set by adding argument `creation_mode` when initializing HyperFile instance. The default is PARQUET.
+
+| Mode | Description | Data Size |
+| --- | --- | --- |
+| PARQUET | Saves data to a single Parquet file then copies to Hyper file. | MEDIUM |
+| COPY | Saves data to CSV format then copies to Hyper file. | MEDIUM |
+| INSERT | Reads data into memory; more forgiving for null values. | SMALL |
+| LARGEFILE | Saves data to multiple Parquet files then copies to Hyper file. | LARGE |
+
+
+Example of setting creation mode:  
+`hf = HyperFile(name="transaction_history", sql=query, is_dbfs_enabled=True, creation_mode="PARQUET")`
 
 ## Hyper File Options
 There is an optional `HyperFileConfig` that can be used to change default behaviors.
