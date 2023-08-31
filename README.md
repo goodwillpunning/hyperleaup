@@ -24,7 +24,7 @@ or even incorporate it as a final step in an ETL pipeline, e.g. refresh data ext
 Install latest release from PyPI:  
 `pip install hyperleaup`
 
-A list of usage examples is available in the `demo` folder of this repo as a [Databricks Notebook Archive (DBC)](demo/Hyperleaup-Demo.dbc) or IPython Notebook (demo/Hyperleaup-Demo.ipynb).
+A list of usage examples is available in the `demo` folder of this repo as a [Databricks Notebook Archive (DBC)](demo/Hyperleaup-Demo.dbc) or [IPython Notebook](demo/Hyperleaup-Demo.ipynb).
 
 
 ## Example usage
