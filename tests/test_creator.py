@@ -206,3 +206,27 @@ class TestCreator(object):
         assert(len(tables) == 1)
         num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees2/employees2.hyper")
         assert(num_rows == 5)
+    
+    def test_create_largefile(self, is_dbfs_enabled=False):
+
+        data = [
+            (1001, "Jane", "Doe", "2000-05-01", 29.0, False),
+            (1002, "John", "Doe", "1988-05-03", 33.0, False),
+            (2201, "Elonzo", "Smith", "1990-05-03", 21.0, True),
+            (2202, None, None, "1980-05-03", 45.0, False),  # Add a few nulls
+            (2235, "", "", "1980-05-03", 43.0, True)
+
+        ]
+        df = get_spark_session().createDataFrame(data, ["id", "first_name", "last_name", "dob", "age", "is_temp"])
+
+        hf_config = HyperFileConfig(timestamp_with_timezone=True, allow_nulls=True, convert_decimal_precision=True)
+        
+        creator = Creator(df=df, name='employees3', is_dbfs_enabled=is_dbfs_enabled,
+                          creation_mode="LARGEFILE", config=hf_config)
+        hyper_file_path = creator.create()
+        
+        assert(hyper_file_path == "/tmp/hyperleaup/employees3/employees3.hyper")
+        tables = TestUtils.get_tables("Extract", "/tmp/hyperleaup/employees3/employees3.hyper")
+        assert(len(tables) == 1)
+        num_rows = TestUtils.get_row_count("Extract", "Extract", "/tmp/hyperleaup/employees3/employees3.hyper")
+        assert(num_rows == 5)

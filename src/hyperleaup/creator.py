@@ -10,7 +10,7 @@ from pyspark.sql.functions import col
 from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, TableName, HyperProcess, Telemetry, \
     Inserter, Connection, CreateMode
 from pathlib import Path
-
+from databricks.sdk.runtime import *
 
 def clean_dataframe(df: DataFrame, allow_nulls=False, convert_decimal_precision=False) -> DataFrame:
     """Replaces null or NaN values with '' and 0s"""
@@ -242,15 +242,13 @@ def write_parquet_to_local_file_system(df: DataFrame, name: str, allow_nulls: bo
 
 
 def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert_decimal_precision = False) -> str:
-    """Moves a Parquet file written to a Databricks Filesystem to a temp directory on the driver node."""
+    """Writes and moves a single Parquet file written to a Databricks Filesystem to a temp directory on the driver node."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
     cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
     
     # write the DataFrame to DBFS as a single Parquet file
     cleaned_df.coalesce(1).write \
-        .option("delimiter", ",") \
-        .option("header", "true") \
         .mode("overwrite").parquet(tmp_dir)
 
     dbfs_tmp_dir = "/dbfs" + tmp_dir
@@ -273,6 +271,57 @@ def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert
 
     return dest_path
 
+
+def write_parquet_multifile_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert_decimal_precision = False) -> str:
+    """For improved performance for large datasets, writes and moves multiple Parquet files written to a Databricks Filesystem 
+    to a temp directory on the driver node."""
+    tmp_dir = f"/tmp/hyperleaup/{name}/"
+
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
+    
+    # write the DataFrame to DBFS as a single Parquet file
+    cleaned_df.write \
+        .mode("overwrite").parquet(tmp_dir)
+
+    # Prepare location for hyper file
+    if not os.path.exists(tmp_dir):
+        os.makedirs(tmp_dir)
+
+    dbfs_tmp_dir = "/dbfs" + tmp_dir
+    files = dbutils.fs.ls(tmp_dir)
+    if files is None:
+      raise FileNotFoundError(f"Parquet path '{tmp_dir}' not found on DBFS.")
+
+    parquet_files = []
+    for item in files:
+      if item.name.endswith(".parquet"):
+        parquet_files.append(item.name)
+        src_path = dbfs_tmp_dir + item.name
+        dest_path = tmp_dir + item.name
+        copyfile(src_path, dest_path)
+
+    return [f"'{tmp_dir}/{parquet_file}'" for parquet_file in parquet_files]
+
+
+def copy_parquet_array_to_hyper_file(parquet_paths: list[str], name: str, table_def: TableDefinition) -> str:
+    """Helper function that copies data from a Parquet file to a .hyper file."""
+    hyper_database_path = f"/tmp/hyperleaup/{name}/{name}.hyper"
+
+    with HyperProcess(telemetry=Telemetry.DO_NOT_SEND_USAGE_DATA_TO_TABLEAU) as hp:
+        with Connection(endpoint=hp.endpoint,
+                        database=Path(hyper_database_path),
+                        create_mode=CreateMode.CREATE_AND_REPLACE) as connection:
+
+            connection.catalog.create_schema(schema=table_def.table_name.schema_name)
+            connection.catalog.create_table(table_definition=table_def)
+
+            array_parquet_path = f"ARRAY[{','.join(parquet_paths)}]"
+
+            copy_command = f"COPY \"Extract\".\"Extract\" from {array_parquet_path} with (format parquet)"
+            count = connection.execute_command(copy_command)
+            logging.info(f"Copied {count} rows.")
+
+    return hyper_database_path
 
 class Creator:
 
@@ -345,6 +394,20 @@ class Creator:
             # COPY data into a Tableau .hyper file
             logging.info("Copying data into Hyper File...")
             database_path = copy_parquet_to_hyper_file(parquet_path, self.name, table_def)
+
+        elif self.creation_mode.upper() == CreationMode.LARGEFILE.value:
+
+            # Write Spark DataFrame to Parquet so that a file COPY can be done
+            logging.info("Writing Spark DataFrame to multiple Parquet files...")
+            parquet_paths = write_parquet_multifile_to_dbfs(self.df, self.name, self.config.allow_nulls, self.config.convert_decimal_precision)
+
+            # Convert the Spark DataFrame schema to a Tableau `TableDefinition`
+            logging.info("Generating Tableau Table Definition...")
+            table_def = get_table_def(self.df, "Extract", "Extract", self.config.timestamp_with_timezone)
+
+            # COPY data into a Tableau .hyper file
+            logging.info("Copying data into Hyper File...")
+            database_path = copy_parquet_array_to_hyper_file(parquet_paths, self.name, table_def)
 
         else:
             raise ValueError(f'Invalid "creation_mode" specified: {self.creation_mode}')
