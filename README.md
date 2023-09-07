@@ -103,6 +103,7 @@ Please understand that issues with the use of this code will not be answered or 
 ## Core Contribution team
 * Lead Developer: [Will Girten](https://www.linkedin.com/in/willgirten/), Lead SSA @Databricks
 * Puru Shrestha, Sr. BI Developer
+* Dustin Vannoy, Sr. SSA @Databricks
 
 ## Project Support
 Please note that all projects in the /databrickslabs github account are provided for your exploration only, 
