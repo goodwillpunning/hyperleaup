@@ -29,6 +29,7 @@ class Publisher:
                  username: str, password: str,
                  token_name: str,
                  token_value: str,
+                 jwt: str,
                  site_id: str,
                  project_name: str,
                  datasource_name: str,
@@ -38,6 +39,7 @@ class Publisher:
         self.password = password
         self.token_name = token_name
         self.token_value = token_value
+        self.jwt = jwt
         self.site_id = site_id
         self.project_name = project_name
         self.project_id = None
@@ -62,8 +64,10 @@ class Publisher:
             tableau_auth = TSC.TableauAuth(username=self.username, password=self.password, site_id=self.site_id)
         elif self.token_name is not None and self.token_value is not None:
             tableau_auth = TSC.PersonalAccessTokenAuth(token_name=self.token_name, personal_access_token=self.token_value, site_id=self.site_id)
+        elif self.jwt is not None:
+            tableau_auth = TSC.JWTAuth(jwt=self.jwt, site_id=self.site_id)
         else:
-            raise ValueError(f'Invalid credentials. Cannot create authorization to connect with Tableau Server.')
+            raise ValueError('Invalid credentials. Cannot create authorization to connect with Tableau Server.')
 
         server = TSC.Server(self.tableau_server_url)
         server.use_server_version()

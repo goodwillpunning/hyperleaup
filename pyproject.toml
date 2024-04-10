@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hyperleaup"
-version = "0.1.2"
+version = "0.1.3"
 authors = [
     { name="Will Girten", email="will.girten@databricks.com" },
 ]
@@ -21,7 +21,7 @@ dependencies = [
     "pyspark",
     "tableauhyperapi",
     "requests",
-    "tableauserverclient",
+    "tableauserverclient>=0.28",
     "urllib3"
 ]
 

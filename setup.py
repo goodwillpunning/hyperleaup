@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='hyperleaup',
-    version='0.1.0',
+    version='0.1.3',
     packages=['hyperleaup'],
     url='https://github.com/goodwillpunning/hyperleaup',
     license='Apache 2.0',
