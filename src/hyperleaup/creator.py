@@ -11,6 +11,7 @@ from tableauhyperapi import SqlType, TableDefinition, NULLABLE, NOT_NULLABLE, Ta
     Inserter, Connection, CreateMode
 from pathlib import Path
 from databricks.sdk.runtime import *
+import time
 
 def clean_dataframe(df: DataFrame, allow_nulls=False, convert_decimal_precision=False) -> DataFrame:
     """Replaces null or NaN values with '' and 0s"""
@@ -245,19 +246,36 @@ def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert
     """Writes and moves a single Parquet file written to a Databricks Filesystem to a temp directory on the driver node."""
     tmp_dir = f"/tmp/hyperleaup/{name}/"
 
-    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision) 
-    
+    cleaned_df = clean_dataframe(df, allow_nulls, convert_decimal_precision)
     # write the DataFrame to DBFS as a single Parquet file
-    cleaned_df.coalesce(1).write \
-        .mode("overwrite").parquet(tmp_dir)
-
+    cleaned_df.coalesce(1).write.mode("overwrite").parquet(tmp_dir)
+    time.sleep(5)
     dbfs_tmp_dir = "/dbfs" + tmp_dir
-    parquet_file = None
-    for root_dir, dirs, files in os.walk(dbfs_tmp_dir):
-        for file in files:
-            if file.endswith(".parquet"):
-                parquet_file = file
+    files = dbutils.fs.ls(tmp_dir)
+    print(files)
+    print(dbfs_tmp_dir)
+    if files is None:
+      logging.info(f"Parquet path '{tmp_dir}' not found on DBFS.")
 
+    dbfs_tmp_dir_list = "dbfs:" + tmp_dir
+    parquet_file = None
+    # List files in the DBFS directory
+    files_info = dbutils.fs.ls(dbfs_tmp_dir_list)
+
+    for file_info in files_info:
+        if file_info.name.endswith(".parquet"):
+            parquet_file = file_info.path
+            print(f"Found parquet file: {parquet_file}")
+            break  # Stop after finding the first .parquet file
+
+    def extract_filename(dbfs_path):
+        # Extract the filename using os.path.basename
+        filename = os.path.basename(dbfs_path)
+        return filename
+
+    dbfs_parquet_file_path = parquet_file
+
+    parquet_file = extract_filename(parquet_file)
     if parquet_file is None:
         raise FileNotFoundError(f"Parquet file '{tmp_dir}' not found on DBFS.")
 
@@ -265,8 +283,11 @@ def write_parquet_to_dbfs(df: DataFrame, name: str, allow_nulls = False, convert
     if not os.path.exists(tmp_dir):
         os.makedirs(tmp_dir)
 
+    logging.info(f"Copying Parquet file from DBFS to local disk...")
     src_path = dbfs_tmp_dir + parquet_file
     dest_path = tmp_dir + parquet_file
+    logging.info(f"Source path is {src_path}")
+    logging.info(f"Dest path is {dest_path}")
     copyfile(src_path, dest_path)
 
     return dest_path

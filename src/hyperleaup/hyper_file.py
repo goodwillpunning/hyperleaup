@@ -10,7 +10,7 @@ from hyperleaup.creator import Creator
 from hyperleaup.hyper_utils import HyperUtils
 from hyperleaup.publisher import Publisher
 from hyperleaup.spark_fixture import get_spark_session
-
+import time
 
 def get_spark_dataframe(sql) -> DataFrame:
     return get_spark_session().sql(sql)
@@ -18,12 +18,14 @@ def get_spark_dataframe(sql) -> DataFrame:
 
 class HyperFile:
 
-    def __init__(self, name: str,
-                 sql: str = None, df: DataFrame = None,
-                 is_dbfs_enabled: bool = False,
-                 creation_mode: str = CreationMode.PARQUET.value,
-                 null_values_replacement: dict = None,
-                 config: HyperFileConfig = HyperFileConfig()):
+    def __init__(
+            self, name: str,
+            sql: str = None, df: DataFrame = None,
+            is_dbfs_enabled: bool = False,
+            creation_mode: str = CreationMode.PARQUET.value,
+            null_values_replacement: dict = None,
+            config: HyperFileConfig = HyperFileConfig()
+        ):
         self.name = name
         # Create a DataFrame from Spark SQL
         if sql is not None and df is None:
@@ -39,12 +41,14 @@ class HyperFile:
         if sql is None and df is None:
             self.path = None
         else:
-            self.path = Creator(self.df,
-                                self.name,
-                                self.is_dbfs_enabled,
-                                self.creation_mode,
-                                self.null_values_replacement,
-                                self.config).create()
+            self.path = Creator(
+                self.df,
+                self.name,
+                self.is_dbfs_enabled,
+                self.creation_mode,
+                self.null_values_replacement,
+                self.config
+            ).create()
         self.luid = None
 
     def print_rows(self):
@@ -107,6 +111,17 @@ class HyperFile:
             dest_path = f'{path}/{self.name}.hyper'
 
         logging.info(f'Saving Hyper File to new location: {dest_path}')
+
+        timeout = 60  # 1 minute
+        start_time = time.time()
+
+        while not os.path.exists(self.path):
+            if time.time() - start_time > timeout:
+                raise FileNotFoundError(f"File {self.path} not found within the timeout period.")
+            print(f"Waiting for the file {self.path} to be written...")
+            time.sleep(1) # wait for a second before checking again
+
+            print(f"File {self.path} exists, proceeding.")
 
         return copyfile(self.path, dest_path)
 
